@@ -12,6 +12,9 @@ const sidebarOpen = ref(true)
 const activePageId = ref(1)
 const pages = ref([])
 const editorHeight = ref(420)
+const iconPickerOpen = ref(false)
+const pageMenuOpen = ref(false)
+const pageIcons = ['👋', '📄', '📚', '🎯', '💡', '✅', '🌱', '🚀', '⭐', '📝', '🎨', '🧠']
 
 const starterPages = [
   { id: 1, title: 'Getting Started', icon: '👋', favorite: true, content: '' },
@@ -84,6 +87,29 @@ function createPage() {
   pages.value.push(page)
   activePageId.value = page.id
   editorHeight.value = 420
+  iconPickerOpen.value = false
+  pageMenuOpen.value = false
+}
+
+function setPageIcon(icon) {
+  if (currentPage.value) currentPage.value.icon = icon
+  iconPickerOpen.value = false
+}
+
+function toggleFavorite() {
+  if (currentPage.value) currentPage.value.favorite = !currentPage.value.favorite
+  pageMenuOpen.value = false
+}
+
+function deleteCurrentPage() {
+  if (pages.value.length <= 1 || !currentPage.value) return
+  const confirmed = window.confirm(`Delete “${currentPage.value.title}”?`)
+  if (!confirmed) return
+
+  pages.value = pages.value.filter(page => page.id !== activePageId.value)
+  activePageId.value = pages.value[0].id
+  pageMenuOpen.value = false
+  iconPickerOpen.value = false
 }
 
 function resizeEditor(event) {
@@ -162,13 +188,43 @@ function resizeEditor(event) {
         <div class="topbar-actions">
           <span class="updated-text">Edited just now</span>
           <button class="share-button" type="button"><Share2 :size="15" /> Share</button>
-          <button class="topbar-icon" type="button" title="More options"><MoreHorizontal :size="19" /></button>
+          <div class="page-menu-wrap">
+            <button class="topbar-icon" type="button" title="More options" @click="pageMenuOpen = !pageMenuOpen">
+              <MoreHorizontal :size="19" />
+            </button>
+            <div v-if="pageMenuOpen" class="page-menu">
+              <button type="button" @click="toggleFavorite">
+                {{ currentPage.favorite ? 'Remove from Favorites' : 'Add to Favorites' }}
+              </button>
+              <button type="button" class="delete-action" :disabled="pages.length <= 1" @click="deleteCurrentPage">
+                Delete page
+              </button>
+            </div>
+          </div>
         </div>
       </header>
 
       <div v-if="currentPage" class="page-container">
         <article class="page-content">
-          <span class="page-icon-large">{{ currentPage.icon }}</span>
+          <div class="page-icon-control">
+            <button
+              class="page-icon-large"
+              type="button"
+              :aria-label="currentPage.icon ? 'Change page icon' : 'Add page icon'"
+              @click="iconPickerOpen = !iconPickerOpen"
+            >
+              {{ currentPage.icon || '+' }}
+            </button>
+            <div v-if="iconPickerOpen" class="icon-picker">
+              <div class="icon-picker-heading">Choose an icon</div>
+              <div class="icon-grid">
+                <button v-for="icon in pageIcons" :key="icon" type="button" :aria-label="`Set page icon to ${icon}`" @click="setPageIcon(icon)">
+                  {{ icon }}
+                </button>
+              </div>
+              <button class="remove-icon" type="button" @click="setPageIcon('')">Remove icon</button>
+            </div>
+          </div>
           <input
             v-model="currentPage.title"
             class="page-title-input"
@@ -189,205 +245,3 @@ function resizeEditor(event) {
   </div>
 </template>
 
-<style scoped>
-:global(body) {
-  margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
-  background: #fff;
-}
-
-:global(#app) {
-  width: 100%;
-  max-width: none;
-  min-height: 100vh;
-  margin: 0;
-  border: 0;
-  display: block;
-  text-align: left;
-}
-
-.login-screen {
-  min-height: 100vh;
-  display: grid;
-  place-items: center;
-  padding: 88px 20px 40px;
-  color: #37352f;
-  font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-}
-
-.brand {
-  position: absolute;
-  top: 24px;
-  left: 28px;
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  color: inherit;
-  font-size: 20px;
-  font-weight: 700;
-  text-decoration: none;
-}
-
-.brand-mark {
-  width: 28px;
-  height: 28px;
-  display: grid;
-  place-items: center;
-  border: 2px solid #37352f;
-  box-shadow: 1px 1px 0 #37352f;
-  font-family: Georgia, "Times New Roman", serif;
-}
-
-.login-panel {
-  width: min(380px, 100%);
-  text-align: center;
-}
-
-.login-panel h1 {
-  margin: 0 0 9px;
-  color: #37352f;
-  font-size: 34px;
-  line-height: 1.18;
-  font-weight: 650;
-  letter-spacing: 0;
-}
-
-.subtitle {
-  margin: 0 0 30px;
-  color: #787774;
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-form { text-align: left; }
-
-label {
-  display: flex;
-  justify-content: space-between;
-  margin: 16px 0 7px;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.optional {
-  color: #9b9a97;
-  font-weight: 400;
-}
-
-input {
-  width: 100%;
-  height: 42px;
-  padding: 0 12px;
-  border: 1px solid #d9d9d6;
-  border-radius: 5px;
-  outline: 0;
-  background: #fff;
-  color: #37352f;
-  font: inherit;
-  font-size: 14px;
-  box-shadow: 0 1px 2px rgb(15 15 15 / 4%);
-}
-
-input:focus {
-  border-color: #2383e2;
-  box-shadow: 0 0 0 2px rgb(35 131 226 / 12%);
-}
-
-input::placeholder { color: #b8b7b4; }
-
-.continue-button {
-  width: 100%;
-  height: 42px;
-  margin-top: 20px;
-  border: 0;
-  border-radius: 5px;
-  background: #2383e2;
-  color: #fff;
-  font: inherit;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.continue-button:hover { background: #1976cc; }
-.continue-button:focus-visible { outline: 2px solid #37352f; outline-offset: 2px; }
-
-.privacy-note {
-  margin: 18px 0 0;
-  color: #9b9a97;
-  font-size: 12px;
-}
-
-.error-message {
-  margin: 8px 0 -8px;
-  color: #d44c47;
-  font-size: 13px;
-}
-
-.signed-in-panel { display: flex; flex-direction: column; align-items: center; }
-.signed-in-panel .subtitle { margin-bottom: 4px; }
-.welcome-mark {
-  width: 52px;
-  height: 52px;
-  display: grid;
-  place-items: center;
-  margin-bottom: 20px;
-  border-radius: 12px;
-  background: #f1f1ef;
-  font-size: 23px;
-  font-weight: 600;
-}
-
-.page-title-input {
-  display: block;
-  width: 100%;
-  height: auto;
-  padding: 0 0 14px;
-  border: 0;
-  border-radius: 0;
-  outline: 0;
-  background: transparent;
-  color: #37352f;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 42px;
-  font-weight: 700;
-  line-height: 1.2;
-  letter-spacing: 0;
-  box-shadow: none;
-}
-
-.page-title-input:focus { border: 0; box-shadow: none; }
-.page-title-input::placeholder { color: #d6d6d3; }
-
-.page-editor {
-  display: block;
-  width: 100%;
-  min-height: 420px;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  outline: 0;
-  overflow: hidden;
-  resize: none;
-  background: transparent;
-  color: #37352f;
-  font: inherit;
-  font-size: 16px;
-  line-height: 1.75;
-  box-shadow: none;
-}
-
-.page-editor:focus { border: 0; box-shadow: none; }
-.page-editor::placeholder { color: #b8b7b4; }
-
-@media (max-width: 760px) {
-  .login-screen { padding-inline: 22px; }
-  .page-title-input { font-size: 34px; }
-}
-
-@media (max-width: 480px) {
-  .brand { top: 20px; left: 20px; }
-  .login-panel h1 { font-size: 30px; }
-}
-</style>

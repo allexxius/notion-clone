@@ -1,7 +1,7 @@
 <script setup>
 import {
   Search, Settings, Plus, ChevronDown, Home, Inbox, CalendarDays,
-  Star, MoreHorizontal, CircleHelp, ChevronsLeft, LogOut
+  Star, MoreHorizontal, CircleHelp, LogOut
 } from 'lucide-vue-next'
 
 defineProps({
