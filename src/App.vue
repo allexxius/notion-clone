@@ -11,11 +11,12 @@ const signedIn = computed(() => profile.value !== null)
 const sidebarOpen = ref(true)
 const activePageId = ref(1)
 const pages = ref([])
+const editorHeight = ref(420)
 
 const starterPages = [
-  { id: 1, title: 'Getting Started', icon: '👋', favorite: true },
-  { id: 2, title: 'My Projects', icon: '📁', favorite: false },
-  { id: 3, title: 'Personal Notes', icon: '📝', favorite: false }
+  { id: 1, title: 'Getting Started', icon: '👋', favorite: true, content: '' },
+  { id: 2, title: 'My Projects', icon: '📁', favorite: false, content: '' },
+  { id: 3, title: 'Personal Notes', icon: '📝', favorite: false, content: '' }
 ]
 
 const currentPage = computed(() => pages.value.find(page => page.id === activePageId.value) || pages.value[0])
@@ -33,7 +34,13 @@ onMounted(() => {
   const savedPages = localStorage.getItem('notion-clone-pages')
   if (savedPages) {
     try {
-      pages.value = JSON.parse(savedPages)
+      const parsedPages = JSON.parse(savedPages)
+      if (Array.isArray(parsedPages)) {
+        pages.value = parsedPages.map(page => ({
+          ...page,
+          content: typeof page.content === 'string' ? page.content : ''
+        }))
+      }
     } catch {
       localStorage.removeItem('notion-clone-pages')
     }
@@ -46,6 +53,7 @@ onMounted(() => {
 
 watch(pages, value => localStorage.setItem('notion-clone-pages', JSON.stringify(value)), { deep: true })
 watch(activePageId, value => localStorage.setItem('notion-clone-active-page', String(value)))
+watch(currentPage, () => resizeEditor(), { flush: 'post' })
 
 function logIn() {
   const displayName = name.value.trim()
@@ -68,12 +76,21 @@ function logOut() {
 
 function selectPage(id) {
   activePageId.value = id
+  editorHeight.value = 420
 }
 
 function createPage() {
-  const page = { id: Date.now(), title: 'Untitled', icon: '📄', favorite: false }
+  const page = { id: Date.now(), title: 'Untitled', icon: '📄', favorite: false, content: '' }
   pages.value.push(page)
   activePageId.value = page.id
+  editorHeight.value = 420
+}
+
+function resizeEditor(event) {
+  const editor = event?.target || document.querySelector('.page-editor')
+  if (!editor) return
+  editor.style.height = 'auto'
+  editorHeight.value = Math.max(420, editor.scrollHeight)
 }
 </script>
 
@@ -152,8 +169,20 @@ function createPage() {
       <div v-if="currentPage" class="page-container">
         <article class="page-content">
           <span class="page-icon-large">{{ currentPage.icon }}</span>
-          <h1 class="page-title">{{ currentPage.title }}</h1>
-          <p class="editor-placeholder">Start writing...</p>
+          <input
+            v-model="currentPage.title"
+            class="page-title-input"
+            aria-label="Page title"
+            placeholder="Untitled"
+          />
+          <textarea
+            v-model="currentPage.content"
+            class="page-editor"
+            :style="{ height: `${editorHeight}px` }"
+            placeholder="Start writing..."
+            aria-label="Page content"
+            @input="resizeEditor"
+          ></textarea>
         </article>
       </div>
     </main>
@@ -310,8 +339,51 @@ input::placeholder { color: #b8b7b4; }
   font-weight: 600;
 }
 
+.page-title-input {
+  display: block;
+  width: 100%;
+  height: auto;
+  padding: 0 0 14px;
+  border: 0;
+  border-radius: 0;
+  outline: 0;
+  background: transparent;
+  color: #37352f;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 42px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0;
+  box-shadow: none;
+}
+
+.page-title-input:focus { border: 0; box-shadow: none; }
+.page-title-input::placeholder { color: #d6d6d3; }
+
+.page-editor {
+  display: block;
+  width: 100%;
+  min-height: 420px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  outline: 0;
+  overflow: hidden;
+  resize: none;
+  background: transparent;
+  color: #37352f;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.75;
+  box-shadow: none;
+}
+
+.page-editor:focus { border: 0; box-shadow: none; }
+.page-editor::placeholder { color: #b8b7b4; }
+
 @media (max-width: 760px) {
   .login-screen { padding-inline: 22px; }
+  .page-title-input { font-size: 34px; }
 }
 
 @media (max-width: 480px) {
