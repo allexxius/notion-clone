@@ -1,11 +1,24 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { ChevronRight, Menu, MoreHorizontal, Share2 } from 'lucide-vue-next'
+import Sidebar from './components/Sidebar.vue'
 
 const name = ref('')
 const email = ref('')
 const error = ref('')
 const profile = ref(null)
 const signedIn = computed(() => profile.value !== null)
+const sidebarOpen = ref(true)
+const activePageId = ref(1)
+const pages = ref([])
+
+const starterPages = [
+  { id: 1, title: 'Getting Started', icon: '👋', favorite: true },
+  { id: 2, title: 'My Projects', icon: '📁', favorite: false },
+  { id: 3, title: 'Personal Notes', icon: '📝', favorite: false }
+]
+
+const currentPage = computed(() => pages.value.find(page => page.id === activePageId.value) || pages.value[0])
 
 onMounted(() => {
   const savedProfile = localStorage.getItem('notion-clone-profile')
@@ -16,7 +29,23 @@ onMounted(() => {
       localStorage.removeItem('notion-clone-profile')
     }
   }
+
+  const savedPages = localStorage.getItem('notion-clone-pages')
+  if (savedPages) {
+    try {
+      pages.value = JSON.parse(savedPages)
+    } catch {
+      localStorage.removeItem('notion-clone-pages')
+    }
+  }
+  if (!pages.value.length) pages.value = starterPages
+
+  const savedActivePage = Number(localStorage.getItem('notion-clone-active-page'))
+  if (pages.value.some(page => page.id === savedActivePage)) activePageId.value = savedActivePage
 })
+
+watch(pages, value => localStorage.setItem('notion-clone-pages', JSON.stringify(value)), { deep: true })
+watch(activePageId, value => localStorage.setItem('notion-clone-active-page', String(value)))
 
 function logIn() {
   const displayName = name.value.trim()
@@ -36,10 +65,20 @@ function logOut() {
   name.value = ''
   email.value = ''
 }
+
+function selectPage(id) {
+  activePageId.value = id
+}
+
+function createPage() {
+  const page = { id: Date.now(), title: 'Untitled', icon: '📄', favorite: false }
+  pages.value.push(page)
+  activePageId.value = page.id
+}
 </script>
 
 <template>
-  <main class="login-screen">
+  <main v-if="!signedIn" class="login-screen">
     <a class="brand" href="#" aria-label="Notion home">
       <span class="brand-mark" aria-hidden="true">N</span>
       <span>Notion</span>
@@ -79,13 +118,46 @@ function logOut() {
       <p class="privacy-note">Your profile is saved in this browser.</p>
     </section>
 
-    <section v-else class="login-panel signed-in-panel" aria-live="polite">
-      <span class="welcome-mark" aria-hidden="true">{{ profile.name.charAt(0).toUpperCase() }}</span>
-      <h1>Welcome, {{ profile.name }}</h1>
-      <p class="subtitle">Your workspace is ready.</p>
-      <button class="continue-button" type="button" @click="logOut">Log out</button>
-    </section>
   </main>
+
+  <div v-else class="app-layout" :class="{ 'sidebar-closed': !sidebarOpen }">
+    <Sidebar
+      v-if="sidebarOpen"
+      :pages="pages"
+      :active-page="activePageId"
+      :profile="profile"
+      @select-page="selectPage"
+      @create-page="createPage"
+      @logout="logOut"
+    />
+
+    <main class="main-content">
+      <header class="topbar">
+        <button class="sidebar-toggle" type="button" title="Toggle sidebar" @click="sidebarOpen = !sidebarOpen">
+          <Menu :size="17" />
+        </button>
+        <div class="breadcrumb">
+          <span class="breadcrumb-icon">{{ profile.name.charAt(0).toUpperCase() }}</span>
+          <span>{{ profile.name }}'s Workspace</span>
+          <ChevronRight :size="14" />
+          <span class="breadcrumb-current">{{ currentPage?.title }}</span>
+        </div>
+        <div class="topbar-actions">
+          <span class="updated-text">Edited just now</span>
+          <button class="share-button" type="button"><Share2 :size="15" /> Share</button>
+          <button class="topbar-icon" type="button" title="More options"><MoreHorizontal :size="19" /></button>
+        </div>
+      </header>
+
+      <div v-if="currentPage" class="page-container">
+        <article class="page-content">
+          <span class="page-icon-large">{{ currentPage.icon }}</span>
+          <h1 class="page-title">{{ currentPage.title }}</h1>
+          <p class="editor-placeholder">Start writing...</p>
+        </article>
+      </div>
+    </main>
+  </div>
 </template>
 
 <style scoped>
@@ -236,6 +308,10 @@ input::placeholder { color: #b8b7b4; }
   background: #f1f1ef;
   font-size: 23px;
   font-weight: 600;
+}
+
+@media (max-width: 760px) {
+  .login-screen { padding-inline: 22px; }
 }
 
 @media (max-width: 480px) {
