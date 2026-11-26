@@ -19,6 +19,10 @@ const activePageId = ref(1)
 const pages = ref([])
 const iconPickerOpen = ref(false)
 const pageMenuOpen = ref(false)
+const shareOpen = ref(false)
+const shareCopied = ref(false)
+const shareMessage = ref('')
+const shareLinkInput = ref(null)
 const searchOpen = ref(false)
 const searchQuery = ref('')
 const searchInput = ref(null)
@@ -43,6 +47,13 @@ const slashCommands = [
 ]
 
 const currentPage = computed(() => pages.value.find(page => page.id === activePageId.value) || pages.value[0])
+const pageLink = computed(() => {
+  if (!currentPage.value) return ''
+  const url = new URL(window.location.href)
+  url.hash = `page=${currentPage.value.id}`
+  return url.toString()
+})
+
 const editor = useEditor({
   content: '',
   extensions: [
@@ -106,14 +117,21 @@ onMounted(() => {
   if (!pages.value.length) pages.value = starterPages.map(normalizePage)
 
   const savedActivePage = Number(localStorage.getItem('notion-clone-active-page'))
-  if (pages.value.some(page => page.id === savedActivePage)) activePageId.value = savedActivePage
+  const linkedPageId = Number(new URLSearchParams(window.location.hash.slice(1)).get('page'))
+  const requestedPageId = pages.value.some(page => page.id === linkedPageId) ? linkedPageId : savedActivePage
+  if (pages.value.some(page => page.id === requestedPageId)) activePageId.value = requestedPageId
   window.addEventListener('keydown', handleWorkspaceKeydown)
 })
 
 onBeforeUnmount(() => window.removeEventListener('keydown', handleWorkspaceKeydown))
 
 watch(pages, value => localStorage.setItem('notion-clone-pages', JSON.stringify(value)), { deep: true })
-watch(activePageId, value => localStorage.setItem('notion-clone-active-page', String(value)))
+watch(activePageId, value => {
+  localStorage.setItem('notion-clone-active-page', String(value))
+  const url = new URL(window.location.href)
+  url.hash = `page=${value}`
+  window.history.replaceState(null, '', url)
+})
 
 function normalizePage(page) {
   const content = typeof page.content === 'string' ? page.content : ''
@@ -169,6 +187,23 @@ function openSearch() {
   searchQuery.value = ''
   searchOpen.value = true
   nextTick(() => searchInput.value?.focus())
+}
+
+function openShare() {
+  shareCopied.value = false
+  shareMessage.value = ''
+  shareOpen.value = true
+}
+
+async function copyPageLink() {
+  try {
+    await navigator.clipboard.writeText(pageLink.value)
+    shareCopied.value = true
+    shareMessage.value = 'Link copied. It opens this page in this browser only.'
+  } catch {
+    shareLinkInput.value?.select()
+    shareMessage.value = 'Copy the selected link. Page data is stored only in this browser.'
+  }
 }
 
 function handleWorkspaceKeydown(event) {
@@ -339,7 +374,7 @@ function deleteCurrentPage() {
         </div>
         <div class="topbar-actions">
           <span class="updated-text">Edited just now</span>
-          <button class="share-button" type="button"><Share2 :size="15" /> Share</button>
+          <button class="share-button" type="button" @click="openShare"><Share2 :size="15" /> Share</button>
           <div class="page-menu-wrap">
             <button class="topbar-icon" type="button" title="More options" @click="pageMenuOpen = !pageMenuOpen">
               <MoreHorizontal :size="19" />
@@ -454,6 +489,22 @@ function deleteCurrentPage() {
           </button>
           <p v-if="!searchResults.length" class="search-empty">No matching pages</p>
         </div>
+      </section>
+    </div>
+
+    <div v-if="shareOpen" class="share-backdrop" @click.self="shareOpen = false">
+      <section class="share-dialog" role="dialog" aria-modal="true" aria-labelledby="share-heading">
+        <header class="share-dialog-header">
+          <h2 id="share-heading">Share “{{ currentPage?.title || 'Untitled' }}”</h2>
+          <button type="button" aria-label="Close share dialog" @click="shareOpen = false"><X :size="17" /></button>
+        </header>
+        <p class="share-notice">This workspace is saved in this browser. The link opens this page here, but it does not share or sync your content to other devices.</p>
+        <label class="share-link-label" for="page-link">Page link</label>
+        <div class="share-link-row">
+          <input id="page-link" ref="shareLinkInput" :value="pageLink" readonly />
+          <button type="button" @click="copyPageLink">{{ shareCopied ? 'Copied' : 'Copy link' }}</button>
+        </div>
+        <p v-if="shareMessage" class="share-message" aria-live="polite">{{ shareMessage }}</p>
       </section>
     </div>
   </div>

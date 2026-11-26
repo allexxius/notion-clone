@@ -663,6 +663,82 @@ textarea { font: inherit; }
 .search-result-copy small { overflow: hidden; color: #787774; text-overflow: ellipsis; white-space: nowrap; }
 .search-empty { padding: 28px 12px; color: #787774; text-align: center; }
 
+.share-backdrop {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  place-items: start center;
+  padding: 12vh 16px 24px;
+  background: rgb(15 15 15 / 20%);
+}
+
+.share-dialog {
+  width: min(480px, 100%);
+  padding: 0 18px 18px;
+  border: 1px solid rgb(15 15 15 / 8%);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 12px 40px rgb(15 15 15 / 18%);
+}
+
+.share-dialog-header {
+  display: flex;
+  min-height: 56px;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 -18px 14px;
+  padding: 0 14px 0 18px;
+  border-bottom: 1px solid rgb(55 53 47 / 9%);
+}
+
+.share-dialog-header h2 { margin: 0; color: #37352f; font-size: 16px; font-weight: 600; }
+
+.share-dialog-header button {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #787774;
+  cursor: pointer;
+}
+
+.share-dialog-header button:hover { background: #efefec; }
+.share-notice { margin: 0 0 16px; color: #787774; font-size: 13px; line-height: 1.5; }
+.share-link-label { display: block; margin-bottom: 6px; color: #5f5e5a; font-size: 12px; font-weight: 600; }
+.share-link-row { display: flex; gap: 8px; }
+
+.share-link-row input {
+  width: 100%;
+  min-width: 0;
+  height: 36px;
+  padding: 0 9px;
+  border: 1px solid #d9d9d6;
+  border-radius: 4px;
+  background: #f7f7f5;
+  color: #5f5e5a;
+  font-size: 12px;
+}
+
+.share-link-row button {
+  min-width: 84px;
+  height: 36px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 4px;
+  background: #2383e2;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.share-link-row button:hover { background: #1976cc; }
+.share-message { margin: 10px 0 0; color: #5f5e5a; font-size: 12px; }
+
 @media (max-width: 760px) {
   .login-screen { padding-inline: 22px; }
   .sidebar { position: absolute; z-index: 10; box-shadow: 2px 0 12px rgb(15 15 15 / 8%); }
