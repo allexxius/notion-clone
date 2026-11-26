@@ -17,6 +17,8 @@ const signedIn = computed(() => profile.value !== null)
 const sidebarOpen = ref(true)
 const activePageId = ref(1)
 const pages = ref([])
+const trashedPages = ref([])
+const trashOpen = ref(false)
 const saveState = ref('saved')
 const iconPickerOpen = ref(false)
 const pageMenuOpen = ref(false)
@@ -123,6 +125,16 @@ onMounted(() => {
   }
   if (!pages.value.length) pages.value = starterPages.map(normalizePage)
 
+  const savedTrash = localStorage.getItem('notion-clone-trash')
+  if (savedTrash) {
+    try {
+      const parsedTrash = JSON.parse(savedTrash)
+      if (Array.isArray(parsedTrash)) trashedPages.value = parsedTrash.map(normalizePage)
+    } catch {
+      localStorage.removeItem('notion-clone-trash')
+    }
+  }
+
   const savedActivePage = Number(localStorage.getItem('notion-clone-active-page'))
   const linkedPageId = Number(new URLSearchParams(window.location.hash.slice(1)).get('page'))
   const requestedPageId = pages.value.some(page => page.id === linkedPageId) ? linkedPageId : savedActivePage
@@ -139,6 +151,9 @@ onBeforeUnmount(() => {
 })
 
 watch(pages, schedulePageSave, { deep: true })
+watch(trashedPages, value => {
+  localStorage.setItem('notion-clone-trash', JSON.stringify(value))
+}, { deep: true })
 watch(activePageId, value => {
   localStorage.setItem('notion-clone-active-page', String(value))
   const url = new URL(window.location.href)
@@ -394,13 +409,32 @@ function toggleFavorite() {
 
 function deleteCurrentPage() {
   if (pages.value.length <= 1 || !currentPage.value) return
-  const confirmed = window.confirm(`Delete “${currentPage.value.title}”?`)
+  const confirmed = window.confirm(`Move “${currentPage.value.title}” to Trash?`)
   if (!confirmed) return
 
+  const deletedPage = { ...currentPage.value, deletedAt: Date.now() }
   pages.value = pages.value.filter(page => page.id !== activePageId.value)
+  trashedPages.value.unshift(deletedPage)
   activePageId.value = pages.value[0].id
   pageMenuOpen.value = false
   iconPickerOpen.value = false
+}
+
+function restorePage(pageId) {
+  const pageIndex = trashedPages.value.findIndex(page => page.id === pageId)
+  if (pageIndex < 0) return
+  const [page] = trashedPages.value.splice(pageIndex, 1)
+  delete page.deletedAt
+  pages.value.push(page)
+  activePageId.value = page.id
+  trashOpen.value = false
+}
+
+function permanentlyDeletePage(pageId) {
+  const page = trashedPages.value.find(item => item.id === pageId)
+  if (!page) return
+  if (!window.confirm(`Permanently delete “${page.title}”? This cannot be undone.`)) return
+  trashedPages.value = trashedPages.value.filter(item => item.id !== pageId)
 }
 
 </script>
@@ -460,6 +494,7 @@ function deleteCurrentPage() {
       @move-page="movePage"
       @open-search="openSearch"
       @open-settings="openSettings"
+      @open-trash="trashOpen = true"
       @logout="logOut"
     />
 
@@ -590,6 +625,27 @@ function deleteCurrentPage() {
             </span>
           </button>
           <p v-if="!searchResults.length" class="search-empty">No matching pages</p>
+        </div>
+      </section>
+    </div>
+
+    <div v-if="trashOpen" class="share-backdrop" @click.self="trashOpen = false">
+      <section class="share-dialog trash-dialog" role="dialog" aria-modal="true" aria-labelledby="trash-heading">
+        <header class="share-dialog-header">
+          <h2 id="trash-heading">Trash</h2>
+          <button type="button" aria-label="Close trash" @click="trashOpen = false"><X :size="17" /></button>
+        </header>
+        <p v-if="!trashedPages.length" class="trash-empty">Trash is empty.</p>
+        <div v-else class="trash-list">
+          <article v-for="page in trashedPages" :key="page.id" class="trash-row">
+            <span class="trash-page-icon">{{ page.icon || '📄' }}</span>
+            <div class="trash-page-name">
+              <strong>{{ page.title || 'Untitled' }}</strong>
+              <small>Deleted {{ new Date(page.deletedAt).toLocaleDateString() }}</small>
+            </div>
+            <button type="button" class="trash-restore" @click="restorePage(page.id)">Restore</button>
+            <button type="button" class="trash-delete" aria-label="Permanently delete page" @click="permanentlyDeletePage(page.id)">Delete</button>
+          </article>
         </div>
       </section>
     </div>
