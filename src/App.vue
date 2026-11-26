@@ -1,6 +1,12 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { ChevronRight, Menu, MoreHorizontal, Search, Share2, X } from 'lucide-vue-next'
+import { EditorContent, useEditor } from '@tiptap/vue-3'
+import StarterKit from '@tiptap/starter-kit'
+import Placeholder from '@tiptap/extension-placeholder'
+import {
+  Bold, ChevronRight, Heading1, Heading2, Italic, List, ListOrdered,
+  Menu, MoreHorizontal, Quote, Redo2, Search, Share2, Undo2, X
+} from 'lucide-vue-next'
 import Sidebar from './components/Sidebar.vue'
 
 const name = ref('')
@@ -11,7 +17,6 @@ const signedIn = computed(() => profile.value !== null)
 const sidebarOpen = ref(true)
 const activePageId = ref(1)
 const pages = ref([])
-const editorHeight = ref(420)
 const iconPickerOpen = ref(false)
 const pageMenuOpen = ref(false)
 const searchOpen = ref(false)
@@ -20,20 +25,39 @@ const searchInput = ref(null)
 const pageIcons = ['👋', '📄', '📚', '🎯', '💡', '✅', '🌱', '🚀', '⭐', '📝', '🎨', '🧠']
 
 const starterPages = [
-  { id: 1, title: 'Getting Started', icon: '👋', favorite: true, content: '' },
-  { id: 2, title: 'My Projects', icon: '📁', favorite: false, content: '' },
-  { id: 3, title: 'Personal Notes', icon: '📝', favorite: false, content: '' }
+  { id: 1, title: 'Getting Started', icon: '👋', favorite: true, content: '', searchText: '' },
+  { id: 2, title: 'My Projects', icon: '📁', favorite: false, content: '', searchText: '' },
+  { id: 3, title: 'Personal Notes', icon: '📝', favorite: false, content: '', searchText: '' }
 ]
 
 const currentPage = computed(() => pages.value.find(page => page.id === activePageId.value) || pages.value[0])
+const editor = useEditor({
+  content: '',
+  extensions: [
+    StarterKit,
+    Placeholder.configure({ placeholder: 'Start writing...' })
+  ],
+  onUpdate: ({ editor: activeEditor }) => {
+    if (!currentPage.value) return
+    currentPage.value.content = activeEditor.getHTML()
+    currentPage.value.searchText = activeEditor.getText()
+    currentPage.value.contentFormat = 'html'
+  }
+})
+
 const searchResults = computed(() => {
   const query = searchQuery.value.trim().toLocaleLowerCase()
   if (!query) return pages.value
 
   return pages.value.filter(page =>
-    `${page.title} ${page.content}`.toLocaleLowerCase().includes(query)
+    `${page.title} ${page.searchText || ''}`.toLocaleLowerCase().includes(query)
   )
 })
+
+watch(currentPage, page => {
+  if (!editor.value) return
+  editor.value.commands.setContent(page?.content || '', { emitUpdate: false })
+}, { flush: 'post' })
 
 onMounted(() => {
   const savedProfile = localStorage.getItem('notion-clone-profile')
@@ -50,16 +74,13 @@ onMounted(() => {
     try {
       const parsedPages = JSON.parse(savedPages)
       if (Array.isArray(parsedPages)) {
-        pages.value = parsedPages.map(page => ({
-          ...page,
-          content: typeof page.content === 'string' ? page.content : ''
-        }))
+        pages.value = parsedPages.map(normalizePage)
       }
     } catch {
       localStorage.removeItem('notion-clone-pages')
     }
   }
-  if (!pages.value.length) pages.value = starterPages
+  if (!pages.value.length) pages.value = starterPages.map(normalizePage)
 
   const savedActivePage = Number(localStorage.getItem('notion-clone-active-page'))
   if (pages.value.some(page => page.id === savedActivePage)) activePageId.value = savedActivePage
@@ -70,7 +91,32 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleWorkspaceKeydo
 
 watch(pages, value => localStorage.setItem('notion-clone-pages', JSON.stringify(value)), { deep: true })
 watch(activePageId, value => localStorage.setItem('notion-clone-active-page', String(value)))
-watch(currentPage, () => resizeEditor(), { flush: 'post' })
+
+function normalizePage(page) {
+  const content = typeof page.content === 'string' ? page.content : ''
+  const hasHtmlContent = page.contentFormat === 'html'
+  return {
+    ...page,
+    content: hasHtmlContent ? content : plainTextToHtml(content),
+    contentFormat: 'html',
+    searchText: typeof page.searchText === 'string' ? page.searchText : content
+  }
+}
+
+function plainTextToHtml(text) {
+  if (!text) return ''
+  return text.split(/\r?\n/).map(line => `<p>${escapeHtml(line) || '<br>'}</p>`).join('')
+}
+
+function escapeHtml(text) {
+  return text.replace(/[&<>"']/g, character => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  })[character])
+}
 
 function logIn() {
   const displayName = name.value.trim()
@@ -93,7 +139,6 @@ function logOut() {
 
 function selectPage(id) {
   activePageId.value = id
-  editorHeight.value = 420
   searchOpen.value = false
 }
 
@@ -113,12 +158,16 @@ function handleWorkspaceKeydown(event) {
 }
 
 function createPage() {
-  const page = { id: Date.now(), title: 'Untitled', icon: '📄', favorite: false, content: '' }
+  const page = { id: Date.now(), title: 'Untitled', icon: '📄', favorite: false, content: '', searchText: '', contentFormat: 'html' }
   pages.value.push(page)
   activePageId.value = page.id
-  editorHeight.value = 420
   iconPickerOpen.value = false
   pageMenuOpen.value = false
+}
+
+function runEditorCommand(command) {
+  if (!editor.value) return
+  command(editor.value.chain().focus()).run()
 }
 
 function setPageIcon(icon) {
@@ -142,12 +191,6 @@ function deleteCurrentPage() {
   iconPickerOpen.value = false
 }
 
-function resizeEditor(event) {
-  const editor = event?.target || document.querySelector('.page-editor')
-  if (!editor) return
-  editor.style.height = 'auto'
-  editorHeight.value = Math.max(420, editor.scrollHeight)
-}
 </script>
 
 <template>
@@ -262,14 +305,21 @@ function resizeEditor(event) {
             aria-label="Page title"
             placeholder="Untitled"
           />
-          <textarea
-            v-model="currentPage.content"
-            class="page-editor"
-            :style="{ height: `${editorHeight}px` }"
-            placeholder="Start writing..."
-            aria-label="Page content"
-            @input="resizeEditor"
-          ></textarea>
+          <div class="editor-toolbar" role="toolbar" aria-label="Text formatting">
+            <button type="button" title="Bold" aria-label="Bold" :class="{ active: editor?.isActive('bold') }" @mousedown.prevent @click="runEditorCommand(chain => chain.toggleBold())"><Bold :size="16" /></button>
+            <button type="button" title="Italic" aria-label="Italic" :class="{ active: editor?.isActive('italic') }" @mousedown.prevent @click="runEditorCommand(chain => chain.toggleItalic())"><Italic :size="16" /></button>
+            <span class="toolbar-divider"></span>
+            <button type="button" title="Heading 1" aria-label="Heading 1" :class="{ active: editor?.isActive('heading', { level: 1 }) }" @mousedown.prevent @click="runEditorCommand(chain => chain.toggleHeading({ level: 1 }))"><Heading1 :size="17" /></button>
+            <button type="button" title="Heading 2" aria-label="Heading 2" :class="{ active: editor?.isActive('heading', { level: 2 }) }" @mousedown.prevent @click="runEditorCommand(chain => chain.toggleHeading({ level: 2 }))"><Heading2 :size="17" /></button>
+            <span class="toolbar-divider"></span>
+            <button type="button" title="Bulleted list" aria-label="Bulleted list" :class="{ active: editor?.isActive('bulletList') }" @mousedown.prevent @click="runEditorCommand(chain => chain.toggleBulletList())"><List :size="17" /></button>
+            <button type="button" title="Numbered list" aria-label="Numbered list" :class="{ active: editor?.isActive('orderedList') }" @mousedown.prevent @click="runEditorCommand(chain => chain.toggleOrderedList())"><ListOrdered :size="17" /></button>
+            <button type="button" title="Quote" aria-label="Quote" :class="{ active: editor?.isActive('blockquote') }" @mousedown.prevent @click="runEditorCommand(chain => chain.toggleBlockquote())"><Quote :size="16" /></button>
+            <span class="toolbar-spacer"></span>
+            <button type="button" title="Undo" aria-label="Undo" :disabled="!editor?.can().undo()" @mousedown.prevent @click="runEditorCommand(chain => chain.undo())"><Undo2 :size="16" /></button>
+            <button type="button" title="Redo" aria-label="Redo" :disabled="!editor?.can().redo()" @mousedown.prevent @click="runEditorCommand(chain => chain.redo())"><Redo2 :size="16" /></button>
+          </div>
+          <EditorContent :editor="editor" class="page-editor" aria-label="Page content" />
         </article>
       </div>
     </main>
