@@ -332,6 +332,21 @@ textarea { font: inherit; }
 }
 
 .page-container { min-height: 0; flex: 1; overflow-y: auto; }
+.home-container { min-height: 0; flex: 1; overflow-y: auto; }
+.home-view { width: min(760px, calc(100% - 40px)); margin: 0 auto; padding: 68px 36px 100px; }
+.home-eyebrow { margin: 0 0 4px; color: #787774; font-size: 12px; }
+.home-view h1 { margin: 0 0 18px; color: #37352f; font-family: Georgia, "Times New Roman", serif; font-size: 42px; line-height: 1.2; letter-spacing: 0; }
+.home-new-page { height: 34px; padding: 0 10px; border: 1px solid rgb(55 53 47 / 12%); border-radius: 5px; background: #fff; color: #37352f; font-size: 13px; cursor: pointer; }
+.home-new-page:hover { background: #f7f7f5; }
+.home-new-page span { margin-right: 5px; color: #787774; }
+.home-section { margin-top: 34px; }
+.home-section h2 { margin: 0 0 10px; color: #37352f; font-size: 13px; font-weight: 600; }
+.home-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.home-page-card { min-width: 0; min-height: 112px; display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; padding: 14px; border: 1px solid rgb(55 53 47 / 10%); border-radius: 6px; background: #fff; color: #37352f; text-align: left; cursor: pointer; }
+.home-page-card:hover { background: #f7f7f5; }
+.home-card-icon { font-size: 28px; }
+.home-page-card strong { max-width: 100%; overflow: hidden; font-size: 13px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.home-empty { grid-column: 1 / -1; margin: 0; color: #787774; font-size: 13px; }
 .page-content { width: min(720px, calc(100% - 40px)); margin: 0 auto; padding: 76px 36px 100px; }
 .page-icon-control { position: relative; height: 96px; }
 
@@ -802,6 +817,8 @@ textarea { font: inherit; }
   .sidebar { position: absolute; z-index: 10; box-shadow: 2px 0 12px rgb(15 15 15 / 8%); }
   .updated-text { display: none; }
   .page-content { width: 100%; padding: 54px 22px 80px; }
+  .home-view { width: 100%; padding: 54px 22px 80px; }
+  .home-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .page-icon-control { height: 78px; }
   .page-icon-large { width: 70px; height: 70px; font-size: 58px; }
   .page-title-input { font-size: 34px; }

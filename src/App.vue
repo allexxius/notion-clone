@@ -16,6 +16,7 @@ const profile = ref(null)
 const signedIn = computed(() => profile.value !== null)
 const sidebarOpen = ref(true)
 const activePageId = ref(1)
+const viewMode = ref('page')
 const pages = ref([])
 const trashedPages = ref([])
 const trashOpen = ref(false)
@@ -244,7 +245,12 @@ function logOut() {
 
 function selectPage(id) {
   activePageId.value = id
+  viewMode.value = 'page'
   searchOpen.value = false
+}
+
+function openHome() {
+  viewMode.value = 'home'
 }
 
 function reorderPages({ sourceId, targetId, after }) {
@@ -333,6 +339,7 @@ function createPage() {
   const page = { id: Date.now(), title: 'Untitled', icon: '📄', favorite: false, content: '', searchText: '', contentFormat: 'html' }
   pages.value.push(page)
   activePageId.value = page.id
+  viewMode.value = 'page'
   iconPickerOpen.value = false
   pageMenuOpen.value = false
 }
@@ -427,6 +434,7 @@ function restorePage(pageId) {
   delete page.deletedAt
   pages.value.push(page)
   activePageId.value = page.id
+  viewMode.value = 'page'
   trashOpen.value = false
 }
 
@@ -495,6 +503,7 @@ function permanentlyDeletePage(pageId) {
       @open-search="openSearch"
       @open-settings="openSettings"
       @open-trash="trashOpen = true"
+      @open-home="openHome"
       @logout="logOut"
     />
 
@@ -507,7 +516,7 @@ function permanentlyDeletePage(pageId) {
           <span class="breadcrumb-icon">{{ profile.name.charAt(0).toUpperCase() }}</span>
           <span>{{ profile.name }}'s Workspace</span>
           <ChevronRight :size="14" />
-          <span class="breadcrumb-current">{{ currentPage?.title }}</span>
+          <span class="breadcrumb-current">{{ viewMode === 'home' ? 'Home' : currentPage?.title }}</span>
         </div>
         <div class="topbar-actions">
           <span class="updated-text" role="status" aria-live="polite">{{ saveStatusText }}</span>
@@ -528,7 +537,36 @@ function permanentlyDeletePage(pageId) {
         </div>
       </header>
 
-      <div v-if="currentPage" class="page-container">
+      <div v-if="viewMode === 'home'" class="home-container">
+        <section class="home-view">
+          <p class="home-eyebrow">Workspace</p>
+          <h1>Home</h1>
+          <button type="button" class="home-new-page" @click="createPage"><span>+</span> New page</button>
+
+          <section class="home-section">
+            <h2>Favorites</h2>
+            <div class="home-grid">
+              <button v-for="page in pages.filter(item => item.favorite)" :key="page.id" type="button" class="home-page-card" @click="selectPage(page.id)">
+                <span class="home-card-icon">{{ page.icon || '📄' }}</span>
+                <strong>{{ page.title || 'Untitled' }}</strong>
+              </button>
+              <p v-if="!pages.some(item => item.favorite)" class="home-empty">No favorite pages yet.</p>
+            </div>
+          </section>
+
+          <section class="home-section">
+            <h2>Recent pages</h2>
+            <div class="home-grid">
+              <button v-for="page in pages" :key="page.id" type="button" class="home-page-card" @click="selectPage(page.id)">
+                <span class="home-card-icon">{{ page.icon || '📄' }}</span>
+                <strong>{{ page.title || 'Untitled' }}</strong>
+              </button>
+            </div>
+          </section>
+        </section>
+      </div>
+
+      <div v-else-if="currentPage" class="page-container">
         <article class="page-content">
           <div class="page-icon-control">
             <button
