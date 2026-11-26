@@ -4,7 +4,7 @@ import { EditorContent, useEditor } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
 import {
-  Bold, ChevronRight, Heading1, Heading2, Italic, List, ListOrdered,
+  Bold, ChevronRight, Code2, Heading1, Heading2, Italic, List, ListOrdered,
   Menu, MoreHorizontal, Quote, Redo2, Search, Share2, Undo2, X
 } from 'lucide-vue-next'
 import Sidebar from './components/Sidebar.vue'
@@ -22,12 +22,24 @@ const pageMenuOpen = ref(false)
 const searchOpen = ref(false)
 const searchQuery = ref('')
 const searchInput = ref(null)
+const slashMenuOpen = ref(false)
+const slashQuery = ref('')
+const slashActiveIndex = ref(0)
 const pageIcons = ['👋', '📄', '📚', '🎯', '💡', '✅', '🌱', '🚀', '⭐', '📝', '🎨', '🧠']
 
 const starterPages = [
   { id: 1, title: 'Getting Started', icon: '👋', favorite: true, content: '', searchText: '' },
   { id: 2, title: 'My Projects', icon: '📁', favorite: false, content: '', searchText: '' },
   { id: 3, title: 'Personal Notes', icon: '📝', favorite: false, content: '', searchText: '' }
+]
+
+const slashCommands = [
+  { id: 'heading1', label: 'Heading 1', keywords: 'h1 title', icon: Heading1 },
+  { id: 'heading2', label: 'Heading 2', keywords: 'h2 subtitle', icon: Heading2 },
+  { id: 'bulletList', label: 'Bulleted list', keywords: 'bullet list ul', icon: List },
+  { id: 'orderedList', label: 'Numbered list', keywords: 'numbered ordered list ol', icon: ListOrdered },
+  { id: 'blockquote', label: 'Quote', keywords: 'quote callout', icon: Quote },
+  { id: 'codeBlock', label: 'Code block', keywords: 'code', icon: Code2 }
 ]
 
 const currentPage = computed(() => pages.value.find(page => page.id === activePageId.value) || pages.value[0])
@@ -42,7 +54,18 @@ const editor = useEditor({
     currentPage.value.content = activeEditor.getHTML()
     currentPage.value.searchText = activeEditor.getText()
     currentPage.value.contentFormat = 'html'
+    updateSlashMenu(activeEditor)
+  },
+  onSelectionUpdate: ({ editor: activeEditor }) => {
+    updateSlashMenu(activeEditor)
   }
+})
+
+const filteredSlashCommands = computed(() => {
+  const query = slashQuery.value.toLocaleLowerCase()
+  return slashCommands.filter(command =>
+    `${command.label} ${command.keywords}`.toLocaleLowerCase().includes(query)
+  )
 })
 
 const searchResults = computed(() => {
@@ -168,6 +191,61 @@ function createPage() {
 function runEditorCommand(command) {
   if (!editor.value) return
   command(editor.value.chain().focus()).run()
+}
+
+function updateSlashMenu(activeEditor) {
+  const { $from } = activeEditor.state.selection
+  const textBeforeCursor = $from.parent.textBetween(0, $from.parentOffset)
+  const match = textBeforeCursor.match(/^\/([a-z0-9]*)$/i)
+
+  if (!match) {
+    slashMenuOpen.value = false
+    slashQuery.value = ''
+    slashActiveIndex.value = 0
+    return
+  }
+
+  if (!slashMenuOpen.value || slashQuery.value !== match[1]) slashActiveIndex.value = 0
+  slashMenuOpen.value = true
+  slashQuery.value = match[1]
+}
+
+function handleEditorKeydown(event) {
+  if (!slashMenuOpen.value) return
+
+  if (event.key === 'ArrowDown' && filteredSlashCommands.value.length) {
+    event.preventDefault()
+    slashActiveIndex.value = (slashActiveIndex.value + 1) % filteredSlashCommands.value.length
+  } else if (event.key === 'ArrowUp' && filteredSlashCommands.value.length) {
+    event.preventDefault()
+    slashActiveIndex.value = (slashActiveIndex.value - 1 + filteredSlashCommands.value.length) % filteredSlashCommands.value.length
+  } else if (event.key === 'Enter' && filteredSlashCommands.value.length) {
+    event.preventDefault()
+    applySlashCommand(filteredSlashCommands.value[slashActiveIndex.value])
+  } else if (event.key === 'Escape') {
+    event.preventDefault()
+    slashMenuOpen.value = false
+  }
+}
+
+function applySlashCommand(command) {
+  if (!editor.value || !command) return
+  const { $from } = editor.value.state.selection
+  const triggerRange = { from: $from.start(), to: $from.pos }
+  const chain = editor.value.chain().focus().deleteRange(triggerRange)
+
+  const actions = {
+    heading1: () => chain.toggleHeading({ level: 1 }).run(),
+    heading2: () => chain.toggleHeading({ level: 2 }).run(),
+    bulletList: () => chain.toggleBulletList().run(),
+    orderedList: () => chain.toggleOrderedList().run(),
+    blockquote: () => chain.toggleBlockquote().run(),
+    codeBlock: () => chain.toggleCodeBlock().run()
+  }
+
+  actions[command.id]?.()
+  slashMenuOpen.value = false
+  slashQuery.value = ''
 }
 
 function setPageIcon(icon) {
@@ -319,7 +397,26 @@ function deleteCurrentPage() {
             <button type="button" title="Undo" aria-label="Undo" :disabled="!editor?.can().undo()" @mousedown.prevent @click="runEditorCommand(chain => chain.undo())"><Undo2 :size="16" /></button>
             <button type="button" title="Redo" aria-label="Redo" :disabled="!editor?.can().redo()" @mousedown.prevent @click="runEditorCommand(chain => chain.redo())"><Redo2 :size="16" /></button>
           </div>
-          <EditorContent :editor="editor" class="page-editor" aria-label="Page content" />
+          <div class="editor-wrap" @keydown="handleEditorKeydown">
+            <div v-if="slashMenuOpen" class="slash-menu" role="listbox" aria-label="Block commands">
+              <p class="slash-menu-label">Insert a block</p>
+              <button
+                v-for="(command, index) in filteredSlashCommands"
+                :key="command.id"
+                type="button"
+                role="option"
+                :aria-selected="index === slashActiveIndex"
+                :class="{ active: index === slashActiveIndex }"
+                @mousedown.prevent
+                @click="applySlashCommand(command)"
+              >
+                <span class="slash-command-icon"><component :is="command.icon" :size="17" /></span>
+                <span>{{ command.label }}</span>
+              </button>
+              <p v-if="!filteredSlashCommands.length" class="slash-menu-empty">No matching blocks</p>
+            </div>
+            <EditorContent :editor="editor" class="page-editor" aria-label="Page content" />
+          </div>
         </article>
       </div>
     </main>

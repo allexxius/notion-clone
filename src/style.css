@@ -464,6 +464,55 @@ textarea { font: inherit; }
   pointer-events: none;
 }
 
+.editor-wrap { position: relative; }
+
+.slash-menu {
+  position: absolute;
+  z-index: 25;
+  top: 8px;
+  left: 0;
+  width: min(280px, 100%);
+  padding: 7px;
+  border: 1px solid rgb(15 15 15 / 9%);
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: 0 6px 24px rgb(15 15 15 / 12%);
+}
+
+.slash-menu-label { margin: 4px 7px 7px; color: #787774; font-size: 11px; }
+
+.slash-menu button {
+  display: flex;
+  width: 100%;
+  min-height: 38px;
+  align-items: center;
+  gap: 9px;
+  padding: 5px 7px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #37352f;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.slash-menu button:hover,
+.slash-menu button.active { background: #efefec; }
+
+.slash-command-icon {
+  display: grid;
+  width: 25px;
+  height: 25px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid rgb(55 53 47 / 10%);
+  border-radius: 4px;
+  color: #787774;
+}
+
+.slash-menu-empty { margin: 0; padding: 12px 8px; color: #787774; font-size: 13px; }
+
 /* Page action popovers */
 .icon-picker,
 .page-menu {
