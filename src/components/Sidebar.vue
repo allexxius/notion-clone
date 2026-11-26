@@ -11,7 +11,7 @@ defineProps({
   profile: Object
 })
 
-const emit = defineEmits(['selectPage', 'createPage', 'openSearch', 'logout', 'reorderPages', 'movePage'])
+const emit = defineEmits(['selectPage', 'createPage', 'openSearch', 'openSettings', 'logout', 'reorderPages', 'movePage'])
 const draggingPageId = ref(null)
 const dropTargetPageId = ref(null)
 
@@ -47,7 +47,7 @@ function dropPage(targetId, event) {
       <button class="sidebar-button" @click="emit('openSearch')">
         <Search :size="17" /><span>Search</span><span class="shortcut">Ctrl K</span>
       </button>
-      <button class="sidebar-button"><Settings :size="17" /><span>Settings</span></button>
+      <button class="sidebar-button" @click="emit('openSettings')"><Settings :size="17" /><span>Settings</span></button>
       <button class="sidebar-button"><Home :size="17" /><span>Home</span></button>
       <button class="sidebar-button"><Inbox :size="17" /><span>Inbox</span></button>
       <button class="sidebar-button"><CalendarDays :size="17" /><span>Calendar</span></button>

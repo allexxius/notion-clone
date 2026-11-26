@@ -24,6 +24,10 @@ const shareOpen = ref(false)
 const shareCopied = ref(false)
 const shareMessage = ref('')
 const shareLinkInput = ref(null)
+const settingsOpen = ref(false)
+const settingsName = ref('')
+const settingsEmail = ref('')
+const settingsError = ref('')
 const searchOpen = ref(false)
 const searchQuery = ref('')
 const searchInput = ref(null)
@@ -260,6 +264,30 @@ function openSearch() {
   nextTick(() => searchInput.value?.focus())
 }
 
+function openSettings() {
+  settingsName.value = profile.value?.name || ''
+  settingsEmail.value = profile.value?.email || ''
+  settingsError.value = ''
+  settingsOpen.value = true
+}
+
+function saveSettings() {
+  const displayName = settingsName.value.trim()
+  if (!displayName) {
+    settingsError.value = 'Enter a name to continue.'
+    return
+  }
+
+  const updatedProfile = { name: displayName, email: settingsEmail.value.trim() }
+  try {
+    localStorage.setItem('notion-clone-profile', JSON.stringify(updatedProfile))
+    profile.value = updatedProfile
+    settingsOpen.value = false
+  } catch {
+    settingsError.value = 'Your changes could not be saved in this browser.'
+  }
+}
+
 function openShare() {
   shareCopied.value = false
   shareMessage.value = ''
@@ -431,6 +459,7 @@ function deleteCurrentPage() {
       @reorder-pages="reorderPages"
       @move-page="movePage"
       @open-search="openSearch"
+      @open-settings="openSettings"
       @logout="logOut"
     />
 
@@ -578,6 +607,27 @@ function deleteCurrentPage() {
           <button type="button" @click="copyPageLink">{{ shareCopied ? 'Copied' : 'Copy link' }}</button>
         </div>
         <p v-if="shareMessage" class="share-message" aria-live="polite">{{ shareMessage }}</p>
+      </section>
+    </div>
+
+    <div v-if="settingsOpen" class="share-backdrop" @click.self="settingsOpen = false">
+      <section class="share-dialog settings-dialog" role="dialog" aria-modal="true" aria-labelledby="settings-heading">
+        <header class="share-dialog-header">
+          <h2 id="settings-heading">Profile settings</h2>
+          <button type="button" aria-label="Close settings" @click="settingsOpen = false"><X :size="17" /></button>
+        </header>
+        <p class="share-notice">Update the name and email shown in your local workspace.</p>
+        <form class="settings-form" @submit.prevent="saveSettings">
+          <label for="settings-name">Name</label>
+          <input id="settings-name" v-model="settingsName" required autocomplete="name" />
+          <label for="settings-email">Email <span class="optional">Optional</span></label>
+          <input id="settings-email" v-model="settingsEmail" type="email" autocomplete="email" />
+          <p v-if="settingsError" class="error-message" role="alert">{{ settingsError }}</p>
+          <div class="settings-actions">
+            <button type="button" class="settings-cancel" @click="settingsOpen = false">Cancel</button>
+            <button type="submit" class="settings-save">Save changes</button>
+          </div>
+        </form>
       </section>
     </div>
   </div>
