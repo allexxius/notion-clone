@@ -1,6 +1,6 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
-import { ChevronRight, Menu, MoreHorizontal, Share2 } from 'lucide-vue-next'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { ChevronRight, Menu, MoreHorizontal, Search, Share2, X } from 'lucide-vue-next'
 import Sidebar from './components/Sidebar.vue'
 
 const name = ref('')
@@ -14,6 +14,9 @@ const pages = ref([])
 const editorHeight = ref(420)
 const iconPickerOpen = ref(false)
 const pageMenuOpen = ref(false)
+const searchOpen = ref(false)
+const searchQuery = ref('')
+const searchInput = ref(null)
 const pageIcons = ['👋', '📄', '📚', '🎯', '💡', '✅', '🌱', '🚀', '⭐', '📝', '🎨', '🧠']
 
 const starterPages = [
@@ -23,6 +26,14 @@ const starterPages = [
 ]
 
 const currentPage = computed(() => pages.value.find(page => page.id === activePageId.value) || pages.value[0])
+const searchResults = computed(() => {
+  const query = searchQuery.value.trim().toLocaleLowerCase()
+  if (!query) return pages.value
+
+  return pages.value.filter(page =>
+    `${page.title} ${page.content}`.toLocaleLowerCase().includes(query)
+  )
+})
 
 onMounted(() => {
   const savedProfile = localStorage.getItem('notion-clone-profile')
@@ -52,7 +63,10 @@ onMounted(() => {
 
   const savedActivePage = Number(localStorage.getItem('notion-clone-active-page'))
   if (pages.value.some(page => page.id === savedActivePage)) activePageId.value = savedActivePage
+  window.addEventListener('keydown', handleWorkspaceKeydown)
 })
+
+onBeforeUnmount(() => window.removeEventListener('keydown', handleWorkspaceKeydown))
 
 watch(pages, value => localStorage.setItem('notion-clone-pages', JSON.stringify(value)), { deep: true })
 watch(activePageId, value => localStorage.setItem('notion-clone-active-page', String(value)))
@@ -80,6 +94,22 @@ function logOut() {
 function selectPage(id) {
   activePageId.value = id
   editorHeight.value = 420
+  searchOpen.value = false
+}
+
+function openSearch() {
+  searchQuery.value = ''
+  searchOpen.value = true
+  nextTick(() => searchInput.value?.focus())
+}
+
+function handleWorkspaceKeydown(event) {
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+    event.preventDefault()
+    openSearch()
+  } else if (event.key === 'Escape') {
+    searchOpen.value = false
+  }
 }
 
 function createPage() {
@@ -171,6 +201,7 @@ function resizeEditor(event) {
       :profile="profile"
       @select-page="selectPage"
       @create-page="createPage"
+      @open-search="openSearch"
       @logout="logOut"
     />
 
@@ -242,6 +273,42 @@ function resizeEditor(event) {
         </article>
       </div>
     </main>
+
+    <div v-if="searchOpen" class="search-backdrop" @click.self="searchOpen = false">
+      <section class="search-dialog" role="dialog" aria-modal="true" aria-label="Search workspace">
+        <div class="search-field">
+          <Search :size="19" aria-hidden="true" />
+          <input
+            ref="searchInput"
+            v-model="searchQuery"
+            type="search"
+            :placeholder="`Search ${profile.name}'s workspace`"
+            aria-label="Search pages"
+          />
+          <button type="button" class="search-close" aria-label="Close search" @click="searchOpen = false">
+            <X :size="17" />
+          </button>
+        </div>
+
+        <div class="search-result-list">
+          <p class="search-section-label">Pages</p>
+          <button
+            v-for="page in searchResults"
+            :key="page.id"
+            type="button"
+            class="search-result"
+            @click="selectPage(page.id)"
+          >
+            <span class="search-result-icon">{{ page.icon || '📄' }}</span>
+            <span class="search-result-copy">
+              <strong>{{ page.title || 'Untitled' }}</strong>
+              <small>{{ page.content || 'No additional text' }}</small>
+            </span>
+          </button>
+          <p v-if="!searchResults.length" class="search-empty">No matching pages</p>
+        </div>
+      </section>
+    </div>
   </div>
 </template>
 
