@@ -1,4 +1,5 @@
 <script setup>
+import { ref } from 'vue'
 import {
   Search, Settings, Plus, ChevronDown, Home, Inbox, CalendarDays,
   Star, MoreHorizontal, CircleHelp, LogOut
@@ -10,7 +11,25 @@ defineProps({
   profile: Object
 })
 
-const emit = defineEmits(['selectPage', 'createPage', 'openSearch', 'logout'])
+const emit = defineEmits(['selectPage', 'createPage', 'openSearch', 'logout', 'reorderPages', 'movePage'])
+const draggingPageId = ref(null)
+const dropTargetPageId = ref(null)
+
+function startPageDrag(pageId, event) {
+  draggingPageId.value = pageId
+  dropTargetPageId.value = null
+  event.dataTransfer.effectAllowed = 'move'
+  event.dataTransfer.setData('text/plain', String(pageId))
+}
+
+function dropPage(targetId, event) {
+  const sourceId = Number(event.dataTransfer.getData('text/plain'))
+  const targetBounds = event.currentTarget.getBoundingClientRect()
+  const after = event.clientY >= targetBounds.top + targetBounds.height / 2
+  if (sourceId) emit('reorderPages', { sourceId, targetId, after })
+  draggingPageId.value = null
+  dropTargetPageId.value = null
+}
 </script>
 
 <template>
@@ -52,8 +71,20 @@ const emit = defineEmits(['selectPage', 'createPage', 'openSearch', 'logout'])
         v-for="page in pages"
         :key="page.id"
         class="sidebar-button page-link"
-        :class="{ active: activePage === page.id }"
+        :class="{
+          active: activePage === page.id,
+          dragging: draggingPageId === page.id,
+          'drop-target': dropTargetPageId === page.id
+        }"
+        draggable="true"
         @click="emit('selectPage', page.id)"
+        @dragstart="startPageDrag(page.id, $event)"
+        @dragend="draggingPageId = null; dropTargetPageId = null"
+        @dragover.prevent="dropTargetPageId = page.id"
+        @drop.prevent.stop="dropPage(page.id, $event)"
+        @keydown.alt.up.prevent="emit('movePage', page.id, -1)"
+        @keydown.alt.down.prevent="emit('movePage', page.id, 1)"
+        :aria-label="`${page.title}, use Alt plus arrow keys to reorder`"
       >
         <span class="page-icon">{{ page.icon }}</span>
         <span class="page-name">{{ page.title }}</span>

@@ -228,6 +228,32 @@ function selectPage(id) {
   searchOpen.value = false
 }
 
+function reorderPages({ sourceId, targetId, after }) {
+  if (sourceId === targetId) return
+  const reorderedPages = [...pages.value]
+  const sourceIndex = reorderedPages.findIndex(page => page.id === sourceId)
+  const targetIndex = reorderedPages.findIndex(page => page.id === targetId)
+  if (sourceIndex < 0 || targetIndex < 0) return
+
+  const [page] = reorderedPages.splice(sourceIndex, 1)
+  let insertIndex = targetIndex + (after ? 1 : 0)
+  if (sourceIndex < insertIndex) insertIndex -= 1
+  reorderedPages.splice(insertIndex, 0, page)
+  pages.value = reorderedPages
+}
+
+function movePage(pageId, direction) {
+  const reorderedPages = [...pages.value]
+  const sourceIndex = reorderedPages.findIndex(page => page.id === pageId)
+  const targetIndex = sourceIndex + direction
+  if (sourceIndex < 0 || targetIndex < 0 || targetIndex >= reorderedPages.length) return
+
+  const movedPage = reorderedPages[sourceIndex]
+  reorderedPages[sourceIndex] = reorderedPages[targetIndex]
+  reorderedPages[targetIndex] = movedPage
+  pages.value = reorderedPages
+}
+
 function openSearch() {
   searchQuery.value = ''
   searchOpen.value = true
@@ -402,6 +428,8 @@ function deleteCurrentPage() {
       :profile="profile"
       @select-page="selectPage"
       @create-page="createPage"
+      @reorder-pages="reorderPages"
+      @move-page="movePage"
       @open-search="openSearch"
       @logout="logOut"
     />
