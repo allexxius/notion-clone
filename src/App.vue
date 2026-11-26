@@ -17,6 +17,7 @@ const signedIn = computed(() => profile.value !== null)
 const sidebarOpen = ref(true)
 const activePageId = ref(1)
 const pages = ref([])
+const saveState = ref('saved')
 const iconPickerOpen = ref(false)
 const pageMenuOpen = ref(false)
 const shareOpen = ref(false)
@@ -30,6 +31,8 @@ const slashMenuOpen = ref(false)
 const slashQuery = ref('')
 const slashActiveIndex = ref(0)
 const pageIcons = ['👋', '📄', '📚', '🎯', '💡', '✅', '🌱', '🚀', '⭐', '📝', '🎨', '🧠']
+let saveTimer = null
+let lastSavedPages = ''
 
 const starterPages = [
   { id: 1, title: 'Getting Started', icon: '👋', favorite: true, content: '', searchText: '' },
@@ -120,17 +123,29 @@ onMounted(() => {
   const linkedPageId = Number(new URLSearchParams(window.location.hash.slice(1)).get('page'))
   const requestedPageId = pages.value.some(page => page.id === linkedPageId) ? linkedPageId : savedActivePage
   if (pages.value.some(page => page.id === requestedPageId)) activePageId.value = requestedPageId
+  lastSavedPages = JSON.stringify(pages.value)
   window.addEventListener('keydown', handleWorkspaceKeydown)
+  window.addEventListener('beforeunload', persistPages)
 })
 
-onBeforeUnmount(() => window.removeEventListener('keydown', handleWorkspaceKeydown))
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleWorkspaceKeydown)
+  window.removeEventListener('beforeunload', persistPages)
+  persistPages()
+})
 
-watch(pages, value => localStorage.setItem('notion-clone-pages', JSON.stringify(value)), { deep: true })
+watch(pages, schedulePageSave, { deep: true })
 watch(activePageId, value => {
   localStorage.setItem('notion-clone-active-page', String(value))
   const url = new URL(window.location.href)
   url.hash = `page=${value}`
   window.history.replaceState(null, '', url)
+})
+
+const saveStatusText = computed(() => {
+  if (saveState.value === 'saving') return 'Saving...'
+  if (saveState.value === 'error') return "Couldn't save"
+  return 'Saved'
 })
 
 function normalizePage(page) {
@@ -141,6 +156,36 @@ function normalizePage(page) {
     content: hasHtmlContent ? content : plainTextToHtml(content),
     contentFormat: 'html',
     searchText: typeof page.searchText === 'string' ? page.searchText : content
+  }
+}
+
+function schedulePageSave(value) {
+  const serializedPages = JSON.stringify(value)
+  if (serializedPages === lastSavedPages) return
+
+  saveState.value = 'saving'
+  if (saveTimer) window.clearTimeout(saveTimer)
+  saveTimer = window.setTimeout(persistPages, 300)
+}
+
+function persistPages() {
+  if (saveTimer) {
+    window.clearTimeout(saveTimer)
+    saveTimer = null
+  }
+
+  const serializedPages = JSON.stringify(pages.value)
+  if (serializedPages === lastSavedPages) {
+    saveState.value = 'saved'
+    return
+  }
+
+  try {
+    localStorage.setItem('notion-clone-pages', serializedPages)
+    lastSavedPages = serializedPages
+    saveState.value = 'saved'
+  } catch {
+    saveState.value = 'error'
   }
 }
 
@@ -373,7 +418,7 @@ function deleteCurrentPage() {
           <span class="breadcrumb-current">{{ currentPage?.title }}</span>
         </div>
         <div class="topbar-actions">
-          <span class="updated-text">Edited just now</span>
+          <span class="updated-text" role="status" aria-live="polite">{{ saveStatusText }}</span>
           <button class="share-button" type="button" @click="openShare"><Share2 :size="15" /> Share</button>
           <div class="page-menu-wrap">
             <button class="topbar-icon" type="button" title="More options" @click="pageMenuOpen = !pageMenuOpen">
