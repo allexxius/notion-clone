@@ -4,7 +4,7 @@ import { EditorContent, useEditor } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
 import {
-  Bold, ChevronRight, Code2, Heading1, Heading2, Italic, List, ListOrdered,
+  Bold, ChevronLeft, ChevronRight, Code2, Heading1, Heading2, Italic, List, ListOrdered,
   Menu, MoreHorizontal, Quote, Redo2, Search, Share2, Undo2, X
 } from 'lucide-vue-next'
 import Sidebar from './components/Sidebar.vue'
@@ -17,6 +17,7 @@ const signedIn = computed(() => profile.value !== null)
 const sidebarOpen = ref(true)
 const activePageId = ref(1)
 const viewMode = ref('page')
+const calendarDate = ref(new Date())
 const pages = ref([])
 const trashedPages = ref([])
 const trashOpen = ref(false)
@@ -47,6 +48,36 @@ const starterPages = [
   { id: 3, title: 'Personal Notes', icon: '📝', favorite: false, content: '', searchText: '' }
 ]
 
+const inboxItems = computed(() => [...pages.value]
+  .sort((a, b) => (b.updatedAt || b.id) - (a.updatedAt || a.id))
+  .slice(0, 8))
+
+const calendarDays = computed(() => {
+  const year = calendarDate.value.getFullYear()
+  const month = calendarDate.value.getMonth()
+  const firstDay = new Date(year, month, 1)
+  const gridStart = new Date(year, month, 1 - firstDay.getDay())
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(gridStart)
+    date.setDate(gridStart.getDate() + index)
+    const dateKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
+    return {
+      date,
+      inMonth: date.getMonth() === month,
+      pages: pages.value.filter(page => {
+        if (!page.updatedAt) return false
+        const updated = new Date(page.updatedAt)
+        return `${updated.getFullYear()}-${updated.getMonth()}-${updated.getDate()}` === dateKey
+      })
+    }
+  })
+})
+
+const calendarLabel = computed(() => calendarDate.value.toLocaleDateString(undefined, {
+  month: 'long',
+  year: 'numeric'
+}))
+
 const slashCommands = [
   { id: 'heading1', label: 'Heading 1', keywords: 'h1 title', icon: Heading1 },
   { id: 'heading2', label: 'Heading 2', keywords: 'h2 subtitle', icon: Heading2 },
@@ -75,6 +106,7 @@ const editor = useEditor({
     currentPage.value.content = activeEditor.getHTML()
     currentPage.value.searchText = activeEditor.getText()
     currentPage.value.contentFormat = 'html'
+    currentPage.value.updatedAt = Date.now()
     updateSlashMenu(activeEditor)
   },
   onSelectionUpdate: ({ editor: activeEditor }) => {
@@ -175,7 +207,8 @@ function normalizePage(page) {
     ...page,
     content: hasHtmlContent ? content : plainTextToHtml(content),
     contentFormat: 'html',
-    searchText: typeof page.searchText === 'string' ? page.searchText : content
+    searchText: typeof page.searchText === 'string' ? page.searchText : content,
+    updatedAt: Number(page.updatedAt) || Number(page.id) || Date.now()
   }
 }
 
@@ -251,6 +284,20 @@ function selectPage(id) {
 
 function openHome() {
   viewMode.value = 'home'
+}
+
+function openInbox() {
+  viewMode.value = 'inbox'
+}
+
+function openCalendar() {
+  viewMode.value = 'calendar'
+}
+
+function moveCalendarMonth(direction) {
+  const date = new Date(calendarDate.value)
+  date.setMonth(date.getMonth() + direction)
+  calendarDate.value = date
 }
 
 function reorderPages({ sourceId, targetId, after }) {
@@ -336,7 +383,8 @@ function handleWorkspaceKeydown(event) {
 }
 
 function createPage() {
-  const page = { id: Date.now(), title: 'Untitled', icon: '📄', favorite: false, content: '', searchText: '', contentFormat: 'html' }
+  const now = Date.now()
+  const page = { id: now, title: 'Untitled', icon: '📄', favorite: false, content: '', searchText: '', contentFormat: 'html', updatedAt: now }
   pages.value.push(page)
   activePageId.value = page.id
   viewMode.value = 'page'
@@ -504,6 +552,8 @@ function permanentlyDeletePage(pageId) {
       @open-settings="openSettings"
       @open-trash="trashOpen = true"
       @open-home="openHome"
+      @open-inbox="openInbox"
+      @open-calendar="openCalendar"
       @logout="logOut"
     />
 
@@ -516,7 +566,7 @@ function permanentlyDeletePage(pageId) {
           <span class="breadcrumb-icon">{{ profile.name.charAt(0).toUpperCase() }}</span>
           <span>{{ profile.name }}'s Workspace</span>
           <ChevronRight :size="14" />
-          <span class="breadcrumb-current">{{ viewMode === 'home' ? 'Home' : currentPage?.title }}</span>
+          <span class="breadcrumb-current">{{ viewMode === 'page' ? currentPage?.title : viewMode.charAt(0).toUpperCase() + viewMode.slice(1) }}</span>
         </div>
         <div class="topbar-actions">
           <span class="updated-text" role="status" aria-live="polite">{{ saveStatusText }}</span>
@@ -563,6 +613,52 @@ function permanentlyDeletePage(pageId) {
               </button>
             </div>
           </section>
+        </section>
+      </div>
+
+      <div v-else-if="viewMode === 'inbox'" class="utility-container">
+        <section class="utility-view">
+          <p class="home-eyebrow">Workspace</p>
+          <h1>Inbox</h1>
+          <p class="utility-subtitle">Recent changes in your workspace</p>
+          <div class="inbox-list">
+            <button v-for="page in inboxItems" :key="page.id" type="button" class="inbox-row" @click="selectPage(page.id)">
+              <span class="inbox-icon">{{ page.icon || '📄' }}</span>
+              <span class="inbox-copy">
+                <strong>{{ page.title || 'Untitled' }}</strong>
+                <small>Updated {{ new Date(page.updatedAt).toLocaleString() }}</small>
+              </span>
+              <ChevronRight :size="15" />
+            </button>
+            <p v-if="!inboxItems.length" class="home-empty">No recent activity.</p>
+          </div>
+        </section>
+      </div>
+
+      <div v-else-if="viewMode === 'calendar'" class="utility-container">
+        <section class="utility-view calendar-view">
+          <p class="home-eyebrow">Workspace</p>
+          <header class="calendar-header">
+            <h1>{{ calendarLabel }}</h1>
+            <div class="calendar-controls">
+              <button type="button" aria-label="Previous month" @click="moveCalendarMonth(-1)"><ChevronLeft :size="16" /></button>
+              <button type="button" aria-label="Next month" @click="moveCalendarMonth(1)"><ChevronRight :size="16" /></button>
+            </div>
+          </header>
+          <div class="calendar-weekdays"><span v-for="day in ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']" :key="day">{{ day }}</span></div>
+          <div class="calendar-grid">
+            <button
+              v-for="day in calendarDays"
+              :key="day.date.toISOString()"
+              type="button"
+              class="calendar-day"
+              :class="{ 'outside-month': !day.inMonth }"
+              @click="day.pages.length === 1 && selectPage(day.pages[0].id)"
+            >
+              <span class="calendar-date">{{ day.date.getDate() }}</span>
+              <span v-for="page in day.pages.slice(0, 2)" :key="page.id" class="calendar-page" @click.stop="selectPage(page.id)">{{ page.icon }} {{ page.title }}</span>
+            </button>
+          </div>
         </section>
       </div>
 
