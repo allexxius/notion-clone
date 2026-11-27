@@ -509,6 +509,13 @@ textarea { font: inherit; }
 .page-editor .tiptap ul,
 .page-editor .tiptap ol { margin: 0.4em 0; padding-left: 1.6em; }
 .page-editor .tiptap li p { margin: 0; }
+.page-editor .tiptap ul[data-type="taskList"] { list-style: none; padding-left: 0; }
+.page-editor .tiptap ul[data-type="taskList"] ul[data-type="taskList"] { margin-left: 1.25em; }
+.page-editor .tiptap li[data-type="taskItem"] { display: flex; align-items: flex-start; gap: 7px; }
+.page-editor .tiptap li[data-type="taskItem"] > label { display: inline-flex; flex: 0 0 auto; margin-top: 0.42em; }
+.page-editor .tiptap li[data-type="taskItem"] > label input { width: 15px; height: 15px; margin: 0; accent-color: #2383e2; cursor: pointer; }
+.page-editor .tiptap li[data-type="taskItem"] > div { flex: 1; }
+.page-editor .tiptap li[data-type="taskItem"][data-checked="true"] > div { color: #9b9a97; text-decoration: line-through; }
 
 .page-editor .tiptap blockquote {
   margin: 0.75em 0;

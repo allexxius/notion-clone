@@ -4,8 +4,10 @@ import { EditorContent, useEditor } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
 import DragHandle from '@tiptap/extension-drag-handle'
+import TaskList from '@tiptap/extension-task-list'
+import TaskItem from '@tiptap/extension-task-item'
 import {
-  Bold, ChevronLeft, ChevronRight, Code2, Heading1, Heading2, Italic, List, ListOrdered,
+  Bold, ChevronLeft, ChevronRight, Code2, Heading1, Heading2, Italic, List, ListOrdered, ListTodo,
   Menu, MoreHorizontal, Quote, Redo2, Search, Share2, Undo2, X
 } from 'lucide-vue-next'
 import Sidebar from './components/Sidebar.vue'
@@ -100,6 +102,7 @@ const slashCommands = [
   { id: 'heading2', label: 'Heading 2', keywords: 'h2 subtitle', icon: Heading2 },
   { id: 'bulletList', label: 'Bulleted list', keywords: 'bullet list ul', icon: List },
   { id: 'orderedList', label: 'Numbered list', keywords: 'numbered ordered list ol', icon: ListOrdered },
+  { id: 'taskList', label: 'To-do list', keywords: 'todo checkbox task', icon: ListTodo },
   { id: 'blockquote', label: 'Quote', keywords: 'quote callout', icon: Quote },
   { id: 'codeBlock', label: 'Code block', keywords: 'code', icon: Code2 }
 ]
@@ -117,6 +120,8 @@ const editor = useEditor({
   extensions: [
     StarterKit,
     Placeholder.configure({ placeholder: 'Start writing...' }),
+    TaskList,
+    TaskItem.configure({ nested: true }),
     DragHandle.configure({
       nested: true,
       render: () => {
@@ -488,6 +493,7 @@ function applySlashCommand(command) {
     heading2: () => chain.toggleHeading({ level: 2 }).run(),
     bulletList: () => chain.toggleBulletList().run(),
     orderedList: () => chain.toggleOrderedList().run(),
+    taskList: () => chain.toggleTaskList().run(),
     blockquote: () => chain.toggleBlockquote().run(),
     codeBlock: () => chain.toggleCodeBlock().run()
   }
@@ -776,6 +782,7 @@ function permanentlyDeletePage(pageId) {
             <span class="toolbar-divider"></span>
             <button type="button" title="Bulleted list" aria-label="Bulleted list" :class="{ active: editor?.isActive('bulletList') }" @mousedown.prevent @click="runEditorCommand(chain => chain.toggleBulletList())"><List :size="17" /></button>
             <button type="button" title="Numbered list" aria-label="Numbered list" :class="{ active: editor?.isActive('orderedList') }" @mousedown.prevent @click="runEditorCommand(chain => chain.toggleOrderedList())"><ListOrdered :size="17" /></button>
+            <button type="button" title="To-do list" aria-label="To-do list" :class="{ active: editor?.isActive('taskList') }" @mousedown.prevent @click="runEditorCommand(chain => chain.toggleTaskList())"><ListTodo :size="17" /></button>
             <button type="button" title="Quote" aria-label="Quote" :class="{ active: editor?.isActive('blockquote') }" @mousedown.prevent @click="runEditorCommand(chain => chain.toggleBlockquote())"><Quote :size="16" /></button>
             <span class="toolbar-spacer"></span>
             <button type="button" title="Undo" aria-label="Undo" :disabled="!editor?.can().undo()" @mousedown.prevent @click="runEditorCommand(chain => chain.undo())"><Undo2 :size="16" /></button>
