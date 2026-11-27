@@ -26,6 +26,8 @@ const sidebarOpen = ref(true)
 const activePageId = ref(1)
 const viewMode = ref('page')
 const calendarDate = ref(new Date())
+const outlineOpen = ref(true)
+const outlineItems = ref([])
 const pages = ref([])
 const trashedPages = ref([])
 const trashOpen = ref(false)
@@ -152,6 +154,7 @@ const editor = useEditor({
     currentPage.value.content = activeEditor.getHTML()
     currentPage.value.searchText = activeEditor.getText()
     currentPage.value.contentFormat = 'html'
+    updateOutline(activeEditor)
     currentPage.value.updatedAt = Date.now()
     updateSlashMenu(activeEditor)
   },
@@ -179,6 +182,7 @@ const searchResults = computed(() => {
 watch(currentPage, page => {
   if (!editor.value) return
   editor.value.commands.setContent(page?.content || '', { emitUpdate: false })
+  nextTick(() => updateOutline(editor.value))
 }, { flush: 'post' })
 
 onMounted(() => {
@@ -289,6 +293,36 @@ function persistPages() {
   } catch {
     saveState.value = 'error'
   }
+}
+
+function updateOutline(activeEditor) {
+  if (!activeEditor) return
+  const items = []
+  activeEditor.state.doc.descendants((node, pos) => {
+    if (node.type.name !== 'heading') return
+    const level = node.attrs.level
+    const text = node.textContent.trim()
+    if (!text) return
+    const id = `heading-${items.length + 1}`
+    items.push({ id, level, text, pos })
+  })
+  outlineItems.value = items
+}
+
+function scrollToHeading(item) {
+  if (!editor.value) return
+  const headings = [...document.querySelectorAll('.page-editor .tiptap h1, .page-editor .tiptap h2')]
+  const heading = headings.find(element => element.textContent.trim() === item.text)
+  if (heading) {
+    heading.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    return
+  }
+
+  editor.value.chain().focus().setTextSelection(item.pos + 1).run()
+  nextTick(() => {
+    const pageEditor = document.querySelector('.page-editor')
+    pageEditor?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  })
 }
 
 function plainTextToHtml(text) {
@@ -672,6 +706,7 @@ function permanentlyDeletePage(pageId) {
         </div>
         <div class="topbar-actions">
           <span class="updated-text" role="status" aria-live="polite">{{ saveStatusText }}</span>
+          <button v-if="viewMode === 'page'" class="topbar-icon" type="button" title="Toggle page outline" :aria-pressed="outlineOpen" @click="outlineOpen = !outlineOpen"><List :size="16" /></button>
           <button class="share-button" type="button" @click="openShare"><Share2 :size="15" /> Share</button>
           <div class="page-menu-wrap">
             <button class="topbar-icon" type="button" title="More options" @click="pageMenuOpen = !pageMenuOpen">
@@ -764,7 +799,17 @@ function permanentlyDeletePage(pageId) {
         </section>
       </div>
 
-      <div v-else-if="currentPage" class="page-container">
+      <div v-else-if="currentPage" class="page-container" :class="{ 'with-outline': outlineOpen }">
+        <aside v-if="outlineOpen && outlineItems.length" class="page-outline">
+          <p>On this page</p>
+          <button
+            v-for="item in outlineItems"
+            :key="item.id"
+            type="button"
+            :class="`outline-level-${item.level}`"
+            @click="scrollToHeading(item)"
+          >{{ item.text }}</button>
+        </aside>
         <article class="page-content" :class="{ 'has-cover': currentPage.cover }">
           <div v-if="currentPage.cover" :class="['page-cover', currentPage.cover]">
             <button type="button" class="page-cover-change" @click="coverPickerOpen = !coverPickerOpen">Change cover</button>
