@@ -53,9 +53,9 @@ let saveTimer = null
 let lastSavedPages = ''
 
 const starterPages = [
-  { id: 1, title: 'Getting Started', icon: '👋', favorite: true, content: '', searchText: '', cover: '' },
-  { id: 2, title: 'My Projects', icon: '📁', favorite: false, content: '', searchText: '', cover: '' },
-  { id: 3, title: 'Personal Notes', icon: '📝', favorite: false, content: '', searchText: '', cover: '' }
+  { id: 1, title: 'Getting Started', icon: '👋', favorite: true, content: '', searchText: '', cover: '', status: 'Not started', dueDate: '' },
+  { id: 2, title: 'My Projects', icon: '📁', favorite: false, content: '', searchText: '', cover: '', status: 'In progress', dueDate: '' },
+  { id: 3, title: 'Personal Notes', icon: '📝', favorite: false, content: '', searchText: '', cover: '', status: 'Done', dueDate: '' }
 ]
 
 const inboxItems = computed(() => [...pages.value]
@@ -77,7 +77,13 @@ const calendarDays = computed(() => {
       pages: pages.value.filter(page => {
         if (!page.updatedAt) return false
         const updated = new Date(page.updatedAt)
-        return `${updated.getFullYear()}-${updated.getMonth()}-${updated.getDate()}` === dateKey
+          const updatedMatches = `${updated.getFullYear()}-${updated.getMonth()}-${updated.getDate()}` === dateKey
+        let dueMatches = false
+        if (page.dueDate) {
+          const [dueYear, dueMonth, dueDay] = page.dueDate.split('-').map(Number)
+          dueMatches = `${dueYear}-${dueMonth - 1}-${dueDay}` === dateKey
+        }
+        return updatedMatches || dueMatches
       })
     }
   })
@@ -219,6 +225,8 @@ function normalizePage(page) {
     contentFormat: 'html',
     searchText: typeof page.searchText === 'string' ? page.searchText : content,
     cover: typeof page.cover === 'string' ? page.cover : '',
+    status: typeof page.status === 'string' ? page.status : 'Not started',
+    dueDate: typeof page.dueDate === 'string' ? page.dueDate : '',
     updatedAt: Number(page.updatedAt) || Number(page.id) || Date.now()
   }
 }
@@ -409,7 +417,7 @@ function handleWorkspaceKeydown(event) {
 
 function createPage() {
   const now = Date.now()
-  const page = { id: now, title: 'Untitled', icon: '📄', favorite: false, content: '', searchText: '', contentFormat: 'html', cover: '', updatedAt: now }
+  const page = { id: now, title: 'Untitled', icon: '📄', favorite: false, content: '', searchText: '', contentFormat: 'html', cover: '', status: 'Not started', dueDate: '', updatedAt: now }
   pages.value.push(page)
   activePageId.value = page.id
   viewMode.value = 'page'
@@ -733,6 +741,20 @@ function permanentlyDeletePage(pageId) {
             aria-label="Page title"
             placeholder="Untitled"
           />
+          <div class="page-properties">
+            <label>
+              <span>Status</span>
+              <select v-model="currentPage.status">
+                <option>Not started</option>
+                <option>In progress</option>
+                <option>Done</option>
+              </select>
+            </label>
+            <label>
+              <span>Due date</span>
+              <input v-model="currentPage.dueDate" type="date" aria-label="Due date" />
+            </label>
+          </div>
           <div class="editor-toolbar" role="toolbar" aria-label="Text formatting">
             <button type="button" title="Bold" aria-label="Bold" :class="{ active: editor?.isActive('bold') }" @mousedown.prevent @click="runEditorCommand(chain => chain.toggleBold())"><Bold :size="16" /></button>
             <button type="button" title="Italic" aria-label="Italic" :class="{ active: editor?.isActive('italic') }" @mousedown.prevent @click="runEditorCommand(chain => chain.toggleItalic())"><Italic :size="16" /></button>
