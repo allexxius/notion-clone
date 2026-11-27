@@ -604,6 +604,11 @@ textarea { font: inherit; }
 }
 
 .slash-menu-empty { margin: 0; padding: 12px 8px; color: #787774; font-size: 13px; }
+.selection-bubble-menu { display: flex; align-items: center; gap: 2px; padding: 4px; border: 1px solid rgb(15 15 15 / 9%); border-radius: 6px; background: #fff; box-shadow: 0 6px 24px rgb(15 15 15 / 14%); }
+.selection-bubble-menu button { display: grid; width: 28px; height: 28px; place-items: center; border: 0; border-radius: 4px; background: transparent; color: #37352f; cursor: pointer; }
+.selection-bubble-menu button:hover,
+.selection-bubble-menu button.active { background: #efefec; }
+.bubble-divider { width: 1px; height: 18px; margin: 0 3px; background: rgb(55 53 47 / 12%); }
 
 .block-drag-handle {
   display: grid;

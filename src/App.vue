@@ -1,6 +1,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
+import { BubbleMenu } from '@tiptap/vue-3/menus'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
 import DragHandle from '@tiptap/extension-drag-handle'
@@ -12,7 +13,7 @@ import { Color } from '@tiptap/extension-color'
 import Highlight from '@tiptap/extension-highlight'
 import {
   Bold, ChevronLeft, ChevronRight, Code2, Heading1, Heading2, Italic, Link2, List, ListOrdered, ListTodo, Palette,
-  Menu, MoreHorizontal, Quote, Redo2, Search, Share2, Undo2, X
+  Menu, MoreHorizontal, Quote, Redo2, Search, Share2, Strikethrough, Undo2, X
 } from 'lucide-vue-next'
 import Sidebar from './components/Sidebar.vue'
 
@@ -856,6 +857,13 @@ function permanentlyDeletePage(pageId) {
             <button type="button" title="Redo" aria-label="Redo" :disabled="!editor?.can().redo()" @mousedown.prevent @click="runEditorCommand(chain => chain.redo())"><Redo2 :size="16" /></button>
           </div>
           <div class="editor-wrap" @keydown="handleEditorKeydown">
+            <BubbleMenu :editor="editor" :tippy-options="{ duration: 100, placement: 'top' }" class="selection-bubble-menu">
+              <button type="button" title="Bold" aria-label="Bold" :class="{ active: editor?.isActive('bold') }" @mousedown.prevent @click="runEditorCommand(chain => chain.toggleBold())"><Bold :size="15" /></button>
+              <button type="button" title="Italic" aria-label="Italic" :class="{ active: editor?.isActive('italic') }" @mousedown.prevent @click="runEditorCommand(chain => chain.toggleItalic())"><Italic :size="15" /></button>
+              <button type="button" title="Strikethrough" aria-label="Strikethrough" :class="{ active: editor?.isActive('strike') }" @mousedown.prevent @click="runEditorCommand(chain => chain.toggleStrike())"><Strikethrough :size="15" /></button>
+              <span class="bubble-divider"></span>
+              <button type="button" title="Clear formatting" aria-label="Clear formatting" @mousedown.prevent @click="runEditorCommand(chain => chain.unsetAllMarks())"><X :size="15" /></button>
+            </BubbleMenu>
             <div v-if="slashMenuOpen" class="slash-menu" role="listbox" aria-label="Block commands">
               <p class="slash-menu-label">Insert a block</p>
               <button
