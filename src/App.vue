@@ -623,15 +623,22 @@ function updateSlashMenu(activeEditor) {
   slashQuery.value = match[1]
 }
 
+function setSlashActiveIndex(index) {
+  slashActiveIndex.value = index
+  nextTick(() => {
+    document.querySelector('.slash-menu button.active')?.scrollIntoView({ block: 'nearest' })
+  })
+}
+
 function handleEditorKeydown(event) {
   if (!slashMenuOpen.value) return
 
   if (event.key === 'ArrowDown' && filteredSlashCommands.value.length) {
     event.preventDefault()
-    slashActiveIndex.value = (slashActiveIndex.value + 1) % filteredSlashCommands.value.length
+    setSlashActiveIndex((slashActiveIndex.value + 1) % filteredSlashCommands.value.length)
   } else if (event.key === 'ArrowUp' && filteredSlashCommands.value.length) {
     event.preventDefault()
-    slashActiveIndex.value = (slashActiveIndex.value - 1 + filteredSlashCommands.value.length) % filteredSlashCommands.value.length
+    setSlashActiveIndex((slashActiveIndex.value - 1 + filteredSlashCommands.value.length) % filteredSlashCommands.value.length)
   } else if (event.key === 'Enter' && filteredSlashCommands.value.length) {
     event.preventDefault()
     applySlashCommand(filteredSlashCommands.value[slashActiveIndex.value])
@@ -1106,6 +1113,7 @@ function permanentlyDeletePage(pageId) {
                 :aria-selected="index === slashActiveIndex"
                 :class="{ active: index === slashActiveIndex }"
                 @mousedown.prevent
+                @mouseenter="setSlashActiveIndex(index)"
                 @click="applySlashCommand(command)"
               >
                 <span class="slash-command-icon"><component :is="command.icon" :size="17" /></span>
@@ -1113,7 +1121,7 @@ function permanentlyDeletePage(pageId) {
               </button>
               <p v-if="!filteredSlashCommands.length" class="slash-menu-empty">No matching blocks</p>
             </div>
-            <EditorContent :editor="editor" class="page-editor" aria-label="Page content" />
+            <EditorContent :editor="editor" class="page-editor" aria-label="Page content" @blur="slashMenuOpen = false" />
           </div>
         </article>
       </div>
