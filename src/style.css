@@ -489,6 +489,15 @@ textarea { font: inherit; }
 .editor-toolbar button:disabled:hover { background: transparent; }
 .toolbar-divider { width: 1px; height: 18px; margin: 0 4px; background: rgb(55 53 47 / 12%); }
 .toolbar-spacer { flex: 1; }
+.color-control { position: relative; }
+.color-popover { position: absolute; z-index: 40; top: 32px; left: 0; width: 190px; padding: 8px; border: 1px solid rgb(15 15 15 / 9%); border-radius: 6px; background: #fff; box-shadow: 0 6px 24px rgb(15 15 15 / 12%); }
+.color-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; margin-bottom: 7px; }
+.color-tabs button { height: 27px; border: 0; border-radius: 4px; background: transparent; color: #787774; font-size: 12px; cursor: pointer; }
+.color-tabs button.active { background: #efefec; color: #37352f; }
+.color-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.color-grid button { width: 28px; height: 28px; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 0 1px rgb(55 53 47 / 12%); cursor: pointer; }
+.remove-formatting { width: 100%; height: 28px; margin-top: 8px; border: 0; border-radius: 4px; background: transparent; color: #787774; font-size: 12px; cursor: pointer; }
+.remove-formatting:hover { background: #efefec; }
 .link-control { position: relative; }
 .link-popover { position: absolute; z-index: 40; top: 32px; left: 0; width: 260px; padding: 8px; border: 1px solid rgb(15 15 15 / 9%); border-radius: 6px; background: #fff; box-shadow: 0 6px 24px rgb(15 15 15 / 12%); }
 .link-popover input { width: 100%; height: 34px; padding: 0 8px; border: 1px solid #d9d9d6; border-radius: 4px; outline: 0; color: #37352f; font-size: 12px; }

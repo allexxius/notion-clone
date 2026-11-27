@@ -7,8 +7,11 @@ import DragHandle from '@tiptap/extension-drag-handle'
 import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
 import Link from '@tiptap/extension-link'
+import { TextStyle } from '@tiptap/extension-text-style'
+import { Color } from '@tiptap/extension-color'
+import Highlight from '@tiptap/extension-highlight'
 import {
-  Bold, ChevronLeft, ChevronRight, Code2, Heading1, Heading2, Italic, Link2, List, ListOrdered, ListTodo,
+  Bold, ChevronLeft, ChevronRight, Code2, Heading1, Heading2, Italic, Link2, List, ListOrdered, ListTodo, Palette,
   Menu, MoreHorizontal, Quote, Redo2, Search, Share2, Undo2, X
 } from 'lucide-vue-next'
 import Sidebar from './components/Sidebar.vue'
@@ -46,6 +49,8 @@ const slashQuery = ref('')
 const slashActiveIndex = ref(0)
 const linkOpen = ref(false)
 const linkUrl = ref('')
+const colorOpen = ref(false)
+const colorMode = ref('text')
 const pageIcons = ['👋', '📄', '📚', '🎯', '💡', '✅', '🌱', '🚀', '⭐', '📝', '🎨', '🧠']
 const pageCovers = [
   { id: 'mist', label: 'Soft mist', className: 'cover-mist' },
@@ -126,6 +131,9 @@ const editor = useEditor({
     TaskList,
     TaskItem.configure({ nested: true }),
     Link.configure({ openOnClick: false, autolink: true, linkOnPaste: true }),
+    TextStyle,
+    Color,
+    Highlight.configure({ multicolor: true }),
     DragHandle.configure({
       nested: true,
       render: () => {
@@ -449,6 +457,21 @@ function createPage() {
 function openLinkPopover() {
   linkUrl.value = editor.value?.getAttributes('link').href || ''
   linkOpen.value = !linkOpen.value
+}
+
+function applyColor(color) {
+  if (!editor.value) return
+  if (colorMode.value === 'highlight') {
+    editor.value.chain().focus().toggleHighlight({ color }).run()
+  } else {
+    editor.value.chain().focus().setColor(color).run()
+  }
+}
+
+function removeColorFormatting() {
+  if (!editor.value) return
+  editor.value.chain().focus().unsetColor().unsetHighlight().run()
+  colorOpen.value = false
 }
 
 function applyLink() {
@@ -797,6 +820,19 @@ function permanentlyDeletePage(pageId) {
           <div class="editor-toolbar" role="toolbar" aria-label="Text formatting">
             <button type="button" title="Bold" aria-label="Bold" :class="{ active: editor?.isActive('bold') }" @mousedown.prevent @click="runEditorCommand(chain => chain.toggleBold())"><Bold :size="16" /></button>
             <button type="button" title="Italic" aria-label="Italic" :class="{ active: editor?.isActive('italic') }" @mousedown.prevent @click="runEditorCommand(chain => chain.toggleItalic())"><Italic :size="16" /></button>
+            <div class="color-control">
+              <button type="button" title="Text color" aria-label="Text color" :class="{ active: colorOpen }" @mousedown.prevent @click="colorOpen = !colorOpen"><Palette :size="16" /></button>
+              <div v-if="colorOpen" class="color-popover">
+                <div class="color-tabs">
+                  <button type="button" :class="{ active: colorMode === 'text' }" @click="colorMode = 'text'">Text</button>
+                  <button type="button" :class="{ active: colorMode === 'highlight' }" @click="colorMode = 'highlight'">Highlight</button>
+                </div>
+                <div class="color-grid">
+                  <button v-for="color in ['#37352f', '#787774', '#d44c47', '#d9730d', '#448361', '#0b6e99', '#6940a5', '#ad1a72']" :key="color" type="button" :title="color" :aria-label="`Apply ${color}`" :style="{ background: color }" @mousedown.prevent @click="applyColor(color)"></button>
+                </div>
+                <button type="button" class="remove-formatting" @click="removeColorFormatting">Remove color</button>
+              </div>
+            </div>
             <div class="link-control">
               <button type="button" title="Add link" aria-label="Add link" :class="{ active: editor?.isActive('link') }" @mousedown.prevent @click="openLinkPopover"><Link2 :size="16" /></button>
               <div v-if="linkOpen" class="link-popover">
