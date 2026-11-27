@@ -39,6 +39,11 @@ const shareOpen = ref(false)
 const shareCopied = ref(false)
 const shareMessage = ref('')
 const shareLinkInput = ref(null)
+const historyOpen = ref(false)
+const historyItems = ref([])
+const historyPreview = ref(null)
+let historyTimer = null
+let lastHistorySignature = ''
 const settingsOpen = ref(false)
 const settingsName = ref('')
 const settingsEmail = ref('')
@@ -156,6 +161,7 @@ const editor = useEditor({
     currentPage.value.contentFormat = 'html'
     updateOutline(activeEditor)
     currentPage.value.updatedAt = Date.now()
+    scheduleHistorySnapshot()
     updateSlashMenu(activeEditor)
   },
   onSelectionUpdate: ({ editor: activeEditor }) => {
@@ -180,6 +186,12 @@ const searchResults = computed(() => {
 })
 
 watch(currentPage, page => {
+  if (historyTimer) {
+    window.clearTimeout(historyTimer)
+    historyTimer = null
+  }
+  lastHistorySignature = ''
+  loadPageHistory(page?.id)
   if (!editor.value) return
   editor.value.commands.setContent(page?.content || '', { emitUpdate: false })
   nextTick(() => updateOutline(editor.value))
@@ -223,11 +235,13 @@ onMounted(() => {
   const requestedPageId = pages.value.some(page => page.id === linkedPageId) ? linkedPageId : savedActivePage
   if (pages.value.some(page => page.id === requestedPageId)) activePageId.value = requestedPageId
   lastSavedPages = JSON.stringify(pages.value)
+  if (currentPage.value) loadPageHistory(currentPage.value.id)
   window.addEventListener('keydown', handleWorkspaceKeydown)
   window.addEventListener('beforeunload', persistPages)
 })
 
 onBeforeUnmount(() => {
+  if (historyTimer) window.clearTimeout(historyTimer)
   window.removeEventListener('keydown', handleWorkspaceKeydown)
   window.removeEventListener('beforeunload', persistPages)
   persistPages()
@@ -323,6 +337,72 @@ function scrollToHeading(item) {
     const pageEditor = document.querySelector('.page-editor')
     pageEditor?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   })
+}
+
+function historyStorageKey(pageId) {
+  return `notion-clone-history-${pageId}`
+}
+
+function loadPageHistory(pageId) {
+  if (!pageId) {
+    historyItems.value = []
+    historyPreview.value = null
+    return
+  }
+  try {
+    const savedHistory = JSON.parse(localStorage.getItem(historyStorageKey(pageId)) || '[]')
+    historyItems.value = Array.isArray(savedHistory) ? savedHistory : []
+  } catch {
+    historyItems.value = []
+  }
+  historyPreview.value = null
+}
+
+function scheduleHistorySnapshot() {
+  if (!currentPage.value) return
+  const page = currentPage.value
+  const signature = `${page.id}|${page.title}|${page.content || ''}|${page.status || ''}|${page.dueDate || ''}`
+  if (signature === lastHistorySignature) return
+  lastHistorySignature = signature
+  if (historyTimer) window.clearTimeout(historyTimer)
+  historyTimer = window.setTimeout(() => saveHistorySnapshot(page), 5000)
+}
+
+function saveHistorySnapshot(page) {
+  const snapshot = {
+    id: Date.now(),
+    savedAt: Date.now(),
+    title: page.title || 'Untitled',
+    content: page.content || '',
+    searchText: page.searchText || '',
+    status: page.status || 'Not started',
+    dueDate: page.dueDate || ''
+  }
+  const stored = [...historyItems.value.filter(item => item.content !== snapshot.content)]
+  stored.unshift(snapshot)
+  const capped = stored.slice(0, 20)
+  historyItems.value = capped
+  localStorage.setItem(historyStorageKey(page.id), JSON.stringify(capped))
+}
+
+function openPageHistory() {
+  if (!currentPage.value) return
+  loadPageHistory(currentPage.value.id)
+  historyPreview.value = null
+  historyOpen.value = true
+  pageMenuOpen.value = false
+}
+
+function restorePageHistory(snapshot) {
+  if (!currentPage.value || !snapshot) return
+  currentPage.value.title = snapshot.title
+  currentPage.value.content = snapshot.content
+  currentPage.value.searchText = snapshot.searchText
+  currentPage.value.status = snapshot.status
+  currentPage.value.dueDate = snapshot.dueDate
+  currentPage.value.updatedAt = Date.now()
+  editor.value?.commands.setContent(snapshot.content || '', { emitUpdate: true })
+  historyOpen.value = false
 }
 
 function plainTextToHtml(text) {
@@ -815,6 +895,7 @@ function permanentlyDeletePage(pageId) {
             </button>
             <div v-if="pageMenuOpen" class="page-menu">
               <button type="button" @click="duplicateCurrentPage">Duplicate</button>
+              <button type="button" @click="openPageHistory">Page history</button>
               <button type="button" @click="exportMarkdown">Export Markdown</button>
               <button type="button" @click="exportHtml">Export HTML</button>
               <button type="button" @click="exportPlainText">Export plain text</button>
@@ -1070,6 +1151,32 @@ function permanentlyDeletePage(pageId) {
             </span>
           </button>
           <p v-if="!searchResults.length" class="search-empty">No matching pages</p>
+        </div>
+      </section>
+    </div>
+
+    <div v-if="historyOpen" class="share-backdrop" @click.self="historyOpen = false">
+      <section class="share-dialog history-dialog" role="dialog" aria-modal="true" aria-labelledby="history-heading">
+        <header class="share-dialog-header">
+          <h2 id="history-heading">Page history</h2>
+          <button type="button" aria-label="Close history" @click="historyOpen = false"><X :size="17" /></button>
+        </header>
+        <p v-if="!historyItems.length" class="history-empty">No saved versions yet. Edit the page and wait briefly for a snapshot.</p>
+        <div v-else class="history-layout">
+          <div class="history-list">
+            <button v-for="snapshot in historyItems" :key="snapshot.id" type="button" :class="{ active: historyPreview?.id === snapshot.id }" @click="historyPreview = snapshot">
+              <strong>{{ snapshot.title || 'Untitled' }}</strong>
+              <small>{{ new Date(snapshot.savedAt).toLocaleString() }}</small>
+            </button>
+          </div>
+          <div class="history-preview">
+            <template v-if="historyPreview">
+              <h3>{{ historyPreview.title || 'Untitled' }}</h3>
+              <div v-html="historyPreview.content"></div>
+              <button type="button" class="history-restore" @click="restorePageHistory(historyPreview)">Restore this version</button>
+            </template>
+            <p v-else>Select a version to preview it.</p>
+          </div>
         </div>
       </section>
     </div>
