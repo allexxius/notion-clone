@@ -23,6 +23,7 @@ const trashedPages = ref([])
 const trashOpen = ref(false)
 const saveState = ref('saved')
 const iconPickerOpen = ref(false)
+const coverPickerOpen = ref(false)
 const pageMenuOpen = ref(false)
 const shareOpen = ref(false)
 const shareCopied = ref(false)
@@ -40,13 +41,21 @@ const slashMenuOpen = ref(false)
 const slashQuery = ref('')
 const slashActiveIndex = ref(0)
 const pageIcons = ['👋', '📄', '📚', '🎯', '💡', '✅', '🌱', '🚀', '⭐', '📝', '🎨', '🧠']
+const pageCovers = [
+  { id: 'mist', label: 'Soft mist', className: 'cover-mist' },
+  { id: 'peach', label: 'Warm peach', className: 'cover-peach' },
+  { id: 'meadow', label: 'Green meadow', className: 'cover-meadow' },
+  { id: 'sky', label: 'Clear sky', className: 'cover-sky' },
+  { id: 'lavender', label: 'Lavender', className: 'cover-lavender' },
+  { id: 'sand', label: 'Warm sand', className: 'cover-sand' }
+]
 let saveTimer = null
 let lastSavedPages = ''
 
 const starterPages = [
-  { id: 1, title: 'Getting Started', icon: '👋', favorite: true, content: '', searchText: '' },
-  { id: 2, title: 'My Projects', icon: '📁', favorite: false, content: '', searchText: '' },
-  { id: 3, title: 'Personal Notes', icon: '📝', favorite: false, content: '', searchText: '' }
+  { id: 1, title: 'Getting Started', icon: '👋', favorite: true, content: '', searchText: '', cover: '' },
+  { id: 2, title: 'My Projects', icon: '📁', favorite: false, content: '', searchText: '', cover: '' },
+  { id: 3, title: 'Personal Notes', icon: '📝', favorite: false, content: '', searchText: '', cover: '' }
 ]
 
 const inboxItems = computed(() => [...pages.value]
@@ -209,6 +218,7 @@ function normalizePage(page) {
     content: hasHtmlContent ? content : plainTextToHtml(content),
     contentFormat: 'html',
     searchText: typeof page.searchText === 'string' ? page.searchText : content,
+    cover: typeof page.cover === 'string' ? page.cover : '',
     updatedAt: Number(page.updatedAt) || Number(page.id) || Date.now()
   }
 }
@@ -399,7 +409,7 @@ function handleWorkspaceKeydown(event) {
 
 function createPage() {
   const now = Date.now()
-  const page = { id: now, title: 'Untitled', icon: '📄', favorite: false, content: '', searchText: '', contentFormat: 'html', updatedAt: now }
+  const page = { id: now, title: 'Untitled', icon: '📄', favorite: false, content: '', searchText: '', contentFormat: 'html', cover: '', updatedAt: now }
   pages.value.push(page)
   activePageId.value = page.id
   viewMode.value = 'page'
@@ -465,6 +475,11 @@ function applySlashCommand(command) {
   actions[command.id]?.()
   slashMenuOpen.value = false
   slashQuery.value = ''
+}
+
+function setPageCover(cover) {
+  if (currentPage.value) currentPage.value.cover = cover
+  coverPickerOpen.value = false
 }
 
 function setPageIcon(icon) {
@@ -679,7 +694,20 @@ function permanentlyDeletePage(pageId) {
       </div>
 
       <div v-else-if="currentPage" class="page-container">
-        <article class="page-content">
+        <article class="page-content" :class="{ 'has-cover': currentPage.cover }">
+          <div v-if="currentPage.cover" :class="['page-cover', currentPage.cover]">
+            <button type="button" class="page-cover-change" @click="coverPickerOpen = !coverPickerOpen">Change cover</button>
+          </div>
+          <div v-else class="page-cover-control">
+            <button type="button" @click="coverPickerOpen = !coverPickerOpen">Add cover</button>
+          </div>
+          <div v-if="coverPickerOpen" class="cover-picker">
+            <div class="icon-picker-heading">Choose a cover</div>
+            <div class="cover-grid">
+              <button v-for="cover in pageCovers" :key="cover.id" type="button" :class="cover.className" :title="cover.label" :aria-label="cover.label" @click="setPageCover(cover.className)"></button>
+            </div>
+            <button v-if="currentPage.cover" type="button" class="remove-icon" @click="setPageCover('')">Remove cover</button>
+          </div>
           <div class="page-icon-control">
             <button
               class="page-icon-large"
