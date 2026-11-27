@@ -489,6 +489,15 @@ textarea { font: inherit; }
 .editor-toolbar button:disabled:hover { background: transparent; }
 .toolbar-divider { width: 1px; height: 18px; margin: 0 4px; background: rgb(55 53 47 / 12%); }
 .toolbar-spacer { flex: 1; }
+.link-control { position: relative; }
+.link-popover { position: absolute; z-index: 40; top: 32px; left: 0; width: 260px; padding: 8px; border: 1px solid rgb(15 15 15 / 9%); border-radius: 6px; background: #fff; box-shadow: 0 6px 24px rgb(15 15 15 / 12%); }
+.link-popover input { width: 100%; height: 34px; padding: 0 8px; border: 1px solid #d9d9d6; border-radius: 4px; outline: 0; color: #37352f; font-size: 12px; }
+.link-popover input:focus { border-color: #2383e2; box-shadow: 0 0 0 2px rgb(35 131 226 / 10%); }
+.link-actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 7px; }
+.link-actions button { width: auto; height: 28px; padding: 0 8px; font-size: 12px; }
+.link-remove { color: #d44c47; }
+.link-apply { background: #2383e2 !important; color: #fff; }
+.link-apply:hover { background: #1976cc !important; }
 
 .page-editor .tiptap {
   min-height: 420px;
@@ -501,6 +510,7 @@ textarea { font: inherit; }
 
 .page-editor .tiptap > :first-child { margin-top: 0; }
 .page-editor .tiptap p { margin: 0 0 0.55em; }
+.page-editor .tiptap a { color: #2383e2; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px; }
 .page-editor .tiptap h1,
 .page-editor .tiptap h2,
 .page-editor .tiptap h3 { color: #37352f; font-family: inherit; letter-spacing: 0; }

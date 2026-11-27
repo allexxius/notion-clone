@@ -6,8 +6,9 @@ import Placeholder from '@tiptap/extension-placeholder'
 import DragHandle from '@tiptap/extension-drag-handle'
 import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
+import Link from '@tiptap/extension-link'
 import {
-  Bold, ChevronLeft, ChevronRight, Code2, Heading1, Heading2, Italic, List, ListOrdered, ListTodo,
+  Bold, ChevronLeft, ChevronRight, Code2, Heading1, Heading2, Italic, Link2, List, ListOrdered, ListTodo,
   Menu, MoreHorizontal, Quote, Redo2, Search, Share2, Undo2, X
 } from 'lucide-vue-next'
 import Sidebar from './components/Sidebar.vue'
@@ -43,6 +44,8 @@ const searchInput = ref(null)
 const slashMenuOpen = ref(false)
 const slashQuery = ref('')
 const slashActiveIndex = ref(0)
+const linkOpen = ref(false)
+const linkUrl = ref('')
 const pageIcons = ['👋', '📄', '📚', '🎯', '💡', '✅', '🌱', '🚀', '⭐', '📝', '🎨', '🧠']
 const pageCovers = [
   { id: 'mist', label: 'Soft mist', className: 'cover-mist' },
@@ -122,6 +125,7 @@ const editor = useEditor({
     Placeholder.configure({ placeholder: 'Start writing...' }),
     TaskList,
     TaskItem.configure({ nested: true }),
+    Link.configure({ openOnClick: false, autolink: true, linkOnPaste: true }),
     DragHandle.configure({
       nested: true,
       render: () => {
@@ -440,6 +444,23 @@ function createPage() {
   viewMode.value = 'page'
   iconPickerOpen.value = false
   pageMenuOpen.value = false
+}
+
+function openLinkPopover() {
+  linkUrl.value = editor.value?.getAttributes('link').href || ''
+  linkOpen.value = !linkOpen.value
+}
+
+function applyLink() {
+  if (!editor.value) return
+  const rawUrl = linkUrl.value.trim()
+  if (!rawUrl) {
+    editor.value.chain().focus().unsetLink().run()
+  } else {
+    const href = /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`
+    editor.value.chain().focus().extendMarkRange('link').setLink({ href }).run()
+  }
+  linkOpen.value = false
 }
 
 function runEditorCommand(command) {
@@ -776,6 +797,16 @@ function permanentlyDeletePage(pageId) {
           <div class="editor-toolbar" role="toolbar" aria-label="Text formatting">
             <button type="button" title="Bold" aria-label="Bold" :class="{ active: editor?.isActive('bold') }" @mousedown.prevent @click="runEditorCommand(chain => chain.toggleBold())"><Bold :size="16" /></button>
             <button type="button" title="Italic" aria-label="Italic" :class="{ active: editor?.isActive('italic') }" @mousedown.prevent @click="runEditorCommand(chain => chain.toggleItalic())"><Italic :size="16" /></button>
+            <div class="link-control">
+              <button type="button" title="Add link" aria-label="Add link" :class="{ active: editor?.isActive('link') }" @mousedown.prevent @click="openLinkPopover"><Link2 :size="16" /></button>
+              <div v-if="linkOpen" class="link-popover">
+                <input v-model="linkUrl" type="url" placeholder="https://example.com" aria-label="Link destination" @keydown.enter.prevent="applyLink" />
+                <div class="link-actions">
+                  <button v-if="editor?.isActive('link')" type="button" class="link-remove" @click="linkUrl = ''; applyLink">Remove</button>
+                  <button type="button" class="link-apply" @click="applyLink">Apply</button>
+                </div>
+              </div>
+            </div>
             <span class="toolbar-divider"></span>
             <button type="button" title="Heading 1" aria-label="Heading 1" :class="{ active: editor?.isActive('heading', { level: 1 }) }" @mousedown.prevent @click="runEditorCommand(chain => chain.toggleHeading({ level: 1 }))"><Heading1 :size="17" /></button>
             <button type="button" title="Heading 2" aria-label="Heading 2" :class="{ active: editor?.isActive('heading', { level: 2 }) }" @mousedown.prevent @click="runEditorCommand(chain => chain.toggleHeading({ level: 2 }))"><Heading2 :size="17" /></button>
