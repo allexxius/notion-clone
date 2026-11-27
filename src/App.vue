@@ -11,9 +11,13 @@ import Link from '@tiptap/extension-link'
 import { TextStyle } from '@tiptap/extension-text-style'
 import { Color } from '@tiptap/extension-color'
 import Highlight from '@tiptap/extension-highlight'
+import { Table } from '@tiptap/extension-table'
+import { TableRow } from '@tiptap/extension-table-row'
+import { TableCell } from '@tiptap/extension-table-cell'
+import { TableHeader } from '@tiptap/extension-table-header'
 import {
-  Bold, ChevronLeft, ChevronRight, Code2, Heading1, Heading2, Italic, Link2, List, ListOrdered, ListTodo, Palette,
-  Menu, MoreHorizontal, Quote, Redo2, Search, Share2, Strikethrough, Undo2, X
+  Bold, ChevronLeft, ChevronRight, Code2, Heading1, Heading2, Italic, Link2, List, ListOrdered, ListTodo, Palette, Table2,
+  Menu, MoreHorizontal, Quote, Redo2, Search, Share2, Strikethrough, Undo2, X, Rows3, Columns3, Trash2
 } from 'lucide-vue-next'
 import Sidebar from './components/Sidebar.vue'
 
@@ -122,6 +126,7 @@ const slashCommands = [
   { id: 'bulletList', label: 'Bulleted list', keywords: 'bullet list ul', icon: List },
   { id: 'orderedList', label: 'Numbered list', keywords: 'numbered ordered list ol', icon: ListOrdered },
   { id: 'taskList', label: 'To-do list', keywords: 'todo checkbox task', icon: ListTodo },
+  { id: 'table', label: 'Table', keywords: 'table grid rows columns', icon: Table2 },
   { id: 'blockquote', label: 'Quote', keywords: 'quote callout', icon: Quote },
   { id: 'codeBlock', label: 'Code block', keywords: 'code', icon: Code2 }
 ]
@@ -145,6 +150,10 @@ const editor = useEditor({
     TextStyle,
     Color,
     Highlight.configure({ multicolor: true }),
+    Table.configure({ resizable: true }),
+    TableRow,
+    TableHeader,
+    TableCell,
     DragHandle.configure({
       nested: true,
       render: () => {
@@ -681,6 +690,7 @@ function applySlashCommand(command) {
     bulletList: () => chain.toggleBulletList().run(),
     orderedList: () => chain.toggleOrderedList().run(),
     taskList: () => chain.toggleTaskList().run(),
+    table: () => chain.insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
     blockquote: () => chain.toggleBlockquote().run(),
     codeBlock: () => chain.toggleCodeBlock().run()
   }
@@ -1112,6 +1122,14 @@ function permanentlyDeletePage(pageId) {
             <button type="button" title="Numbered list" aria-label="Numbered list" :class="{ active: editor?.isActive('orderedList') }" @mousedown.prevent @click="runEditorCommand(chain => chain.toggleOrderedList())"><ListOrdered :size="17" /></button>
             <button type="button" title="To-do list" aria-label="To-do list" :class="{ active: editor?.isActive('taskList') }" @mousedown.prevent @click="runEditorCommand(chain => chain.toggleTaskList())"><ListTodo :size="17" /></button>
             <button type="button" title="Quote" aria-label="Quote" :class="{ active: editor?.isActive('blockquote') }" @mousedown.prevent @click="runEditorCommand(chain => chain.toggleBlockquote())"><Quote :size="16" /></button>
+            <template v-if="editor?.isActive('table')">
+              <span class="toolbar-divider"></span>
+              <button type="button" title="Add row below" aria-label="Add row below" @mousedown.prevent @click="runEditorCommand(chain => chain.addRowAfter())"><Rows3 :size="16" /></button>
+              <button type="button" title="Delete row" aria-label="Delete row" @mousedown.prevent @click="runEditorCommand(chain => chain.deleteRow())"><Rows3 :size="16" /></button>
+              <button type="button" title="Add column after" aria-label="Add column after" @mousedown.prevent @click="runEditorCommand(chain => chain.addColumnAfter())"><Columns3 :size="16" /></button>
+              <button type="button" title="Delete column" aria-label="Delete column" @mousedown.prevent @click="runEditorCommand(chain => chain.deleteColumn())"><Columns3 :size="16" /></button>
+              <button type="button" title="Delete table" aria-label="Delete table" @mousedown.prevent @click="runEditorCommand(chain => chain.deleteTable())"><Trash2 :size="16" /></button>
+            </template>
             <span class="toolbar-spacer"></span>
             <button type="button" title="Undo" aria-label="Undo" :disabled="!editor?.can().undo()" @mousedown.prevent @click="runEditorCommand(chain => chain.undo())"><Undo2 :size="16" /></button>
             <button type="button" title="Redo" aria-label="Redo" :disabled="!editor?.can().redo()" @mousedown.prevent @click="runEditorCommand(chain => chain.redo())"><Redo2 :size="16" /></button>
