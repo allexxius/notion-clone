@@ -44,10 +44,13 @@ const historyItems = ref([])
 const historyPreview = ref(null)
 let historyTimer = null
 let lastHistorySignature = ''
+let themeMedia = null
+let themeMediaHandler = null
 const settingsOpen = ref(false)
 const settingsName = ref('')
 const settingsEmail = ref('')
 const settingsError = ref('')
+const settingsTheme = ref('system')
 const helpOpen = ref(false)
 const searchOpen = ref(false)
 const searchQuery = ref('')
@@ -198,6 +201,13 @@ watch(currentPage, page => {
 }, { flush: 'post' })
 
 onMounted(() => {
+  settingsTheme.value = localStorage.getItem('notion-clone-theme') || 'system'
+  applyTheme(settingsTheme.value)
+  themeMedia = window.matchMedia('(prefers-color-scheme: dark)')
+  themeMediaHandler = () => {
+    if (settingsTheme.value === 'system') applyTheme('system')
+  }
+  themeMedia.addEventListener?.('change', themeMediaHandler)
   const savedProfile = localStorage.getItem('notion-clone-profile')
   if (savedProfile) {
     try {
@@ -241,6 +251,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  themeMedia?.removeEventListener?.('change', themeMediaHandler)
   if (historyTimer) window.clearTimeout(historyTimer)
   window.removeEventListener('keydown', handleWorkspaceKeydown)
   window.removeEventListener('beforeunload', persistPages)
@@ -505,13 +516,21 @@ function resetWorkspace() {
   localStorage.removeItem('notion-clone-pages')
   localStorage.removeItem('notion-clone-trash')
   localStorage.removeItem('notion-clone-active-page')
+  localStorage.removeItem('notion-clone-theme')
   window.location.hash = ''
   window.location.reload()
+}
+
+function applyTheme(theme) {
+  const preference = ['light', 'dark', 'system'].includes(theme) ? theme : 'system'
+  const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+  document.documentElement.dataset.theme = preference === 'system' ? (systemDark ? 'dark' : 'light') : preference
 }
 
 function openSettings() {
   settingsName.value = profile.value?.name || ''
   settingsEmail.value = profile.value?.email || ''
+  settingsTheme.value = localStorage.getItem('notion-clone-theme') || 'system'
   settingsError.value = ''
   settingsOpen.value = true
 }
@@ -526,6 +545,8 @@ function saveSettings() {
   const updatedProfile = { name: displayName, email: settingsEmail.value.trim() }
   try {
     localStorage.setItem('notion-clone-profile', JSON.stringify(updatedProfile))
+    localStorage.setItem('notion-clone-theme', settingsTheme.value)
+    applyTheme(settingsTheme.value)
     profile.value = updatedProfile
     settingsOpen.value = false
   } catch {
@@ -1261,6 +1282,12 @@ function permanentlyDeletePage(pageId) {
           <input id="settings-name" v-model="settingsName" required autocomplete="name" />
           <label for="settings-email">Email <span class="optional">Optional</span></label>
           <input id="settings-email" v-model="settingsEmail" type="email" autocomplete="email" />
+          <label for="settings-theme">Appearance</label>
+          <select id="settings-theme" v-model="settingsTheme">
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+            <option value="system">System</option>
+          </select>
           <p v-if="settingsError" class="error-message" role="alert">{{ settingsError }}</p>
           <div class="settings-actions">
             <button type="button" class="settings-cancel" @click="settingsOpen = false">Cancel</button>

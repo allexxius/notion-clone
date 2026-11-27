@@ -30,7 +30,8 @@ body {
 
 button,
 input,
-textarea { font: inherit; }
+textarea,
+select { font: inherit; }
 
 /* Login */
 .login-screen {
@@ -885,6 +886,8 @@ textarea { font: inherit; }
 }
 
 .settings-form input:focus { border-color: #2383e2; box-shadow: 0 0 0 2px rgb(35 131 226 / 12%); }
+.settings-form select { width: 100%; height: 36px; padding: 0 9px; border: 1px solid #d9d9d6; border-radius: 4px; outline: 0; background: #fff; color: #37352f; font-size: 13px; }
+.settings-form select:focus { border-color: #2383e2; box-shadow: 0 0 0 2px rgb(35 131 226 / 12%); }
 
 .settings-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 
@@ -911,6 +914,75 @@ textarea { font: inherit; }
 kbd { min-width: 24px; padding: 2px 6px; border: 1px solid rgb(55 53 47 / 12%); border-bottom-width: 2px; border-radius: 4px; background: #f7f7f5; color: #37352f; font-family: ui-monospace, monospace; font-size: 11px; text-align: center; }
 .help-reset { display: flex; justify-content: flex-end; padding-top: 12px; border-top: 1px solid rgb(55 53 47 / 8%); }
 .help-reset button { height: 32px; padding: 0 9px; border: 0; border-radius: 4px; background: transparent; font-size: 12px; }
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+:root[data-theme="dark"] body,
+:root[data-theme="dark"] .app-layout,
+:root[data-theme="dark"] .main-content,
+:root[data-theme="dark"] .page-container,
+:root[data-theme="dark"] .home-container,
+:root[data-theme="dark"] .utility-container,
+:root[data-theme="dark"] .login-screen,
+:root[data-theme="dark"] .share-dialog,
+:root[data-theme="dark"] .search-dialog,
+:root[data-theme="dark"] .page-menu,
+:root[data-theme="dark"] .icon-picker,
+:root[data-theme="dark"] .cover-picker,
+:root[data-theme="dark"] .slash-menu,
+:root[data-theme="dark"] .color-popover,
+:root[data-theme="dark"] .link-popover,
+:root[data-theme="dark"] .selection-bubble-menu,
+:root[data-theme="dark"] .editor-toolbar { background: #191919; color: #dcddd9; }
+
+:root[data-theme="dark"] .sidebar { background: #202020; color: #dcddd9; }
+:root[data-theme="dark"] .workspace:hover,
+:root[data-theme="dark"] .sidebar-button:hover,
+:root[data-theme="dark"] .user-profile:hover,
+:root[data-theme="dark"] .page-link.active,
+:root[data-theme="dark"] .page-menu button:hover,
+:root[data-theme="dark"] .slash-menu button:hover,
+:root[data-theme="dark"] .slash-menu button.active,
+:root[data-theme="dark"] .editor-toolbar button:hover,
+:root[data-theme="dark"] .editor-toolbar button.active,
+:root[data-theme="dark"] .search-result:hover,
+:root[data-theme="dark"] .calendar-day:hover,
+:root[data-theme="dark"] .home-page-card:hover,
+:root[data-theme="dark"] .inbox-row:hover { background: #2a2a28; }
+
+:root[data-theme="dark"] .page-title-input,
+:root[data-theme="dark"] .page-editor .tiptap,
+:root[data-theme="dark"] .breadcrumb-current,
+:root[data-theme="dark"] .home-view h1,
+:root[data-theme="dark"] .utility-view h1,
+:root[data-theme="dark"] .home-section h2,
+:root[data-theme="dark"] .home-page-card,
+:root[data-theme="dark"] .login-panel h1,
+:root[data-theme="dark"] .brand,
+:root[data-theme="dark"] .share-dialog-header h2,
+:root[data-theme="dark"] .settings-form input,
+:root[data-theme="dark"] .settings-form select,
+:root[data-theme="dark"] .search-field input { color: #dcddd9; }
+
+:root[data-theme="dark"] .topbar,
+:root[data-theme="dark"] .sidebar-navigation,
+:root[data-theme="dark"] .share-dialog-header,
+:root[data-theme="dark"] .search-field,
+:root[data-theme="dark"] .calendar-grid,
+:root[data-theme="dark"] .calendar-day,
+:root[data-theme="dark"] .inbox-list,
+:root[data-theme="dark"] .inbox-row { border-color: rgb(255 255 255 / 8%); }
+
+:root[data-theme="dark"] .workspace-icon,
+:root[data-theme="dark"] .user-avatar,
+:root[data-theme="dark"] .breadcrumb-icon,
+:root[data-theme="dark"] .calendar-day,
+:root[data-theme="dark"] .home-page-card,
+:root[data-theme="dark"] .settings-form input,
+:root[data-theme="dark"] .settings-form select,
+:root[data-theme="dark"] .link-popover input { background: #242424; }
 
 .trash-empty { margin: 8px 0 18px; color: #787774; font-size: 13px; text-align: center; }
 .trash-list { max-height: 360px; overflow-y: auto; }
