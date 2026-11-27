@@ -11,7 +11,7 @@ defineProps({
   profile: Object
 })
 
-const emit = defineEmits(['selectPage', 'createPage', 'openSearch', 'openSettings', 'openTrash', 'openHome', 'openInbox', 'openCalendar', 'logout', 'reorderPages', 'movePage'])
+const emit = defineEmits(['selectPage', 'createPage', 'openSearch', 'openSettings', 'openTrash', 'openHelp', 'openHome', 'openInbox', 'openCalendar', 'logout', 'reorderPages', 'movePage'])
 const draggingPageId = ref(null)
 const dropTargetPageId = ref(null)
 
@@ -97,6 +97,7 @@ function dropPage(targetId, event) {
     </div>
 
     <div class="sidebar-bottom">
+      <button class="sidebar-button" @click="emit('openHelp')"><CircleHelp :size="17" /><span>Help & support</span></button>
       <button class="sidebar-button" @click="emit('openTrash')"><CircleHelp :size="17" /><span>Trash</span></button>
       <button class="user-profile" @click="emit('logout')" title="Log out">
         <div class="user-avatar">{{ profile.name.charAt(0).toUpperCase() }}</div>

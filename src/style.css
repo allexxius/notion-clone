@@ -821,6 +821,15 @@ textarea { font: inherit; }
 .settings-save { background: #2383e2; color: #fff; }
 .settings-save:hover { background: #1976cc; }
 
+.help-section { padding: 12px 0; border-top: 1px solid rgb(55 53 47 / 8%); }
+.help-section:first-of-type { border-top: 0; }
+.help-section h3 { margin: 0 0 8px; color: #37352f; font-size: 13px; }
+.help-section p { margin: 6px 0; color: #787774; font-size: 12px; line-height: 1.5; }
+.shortcut-row { display: flex; min-height: 32px; align-items: center; justify-content: space-between; color: #5f5e5a; font-size: 12px; }
+kbd { min-width: 24px; padding: 2px 6px; border: 1px solid rgb(55 53 47 / 12%); border-bottom-width: 2px; border-radius: 4px; background: #f7f7f5; color: #37352f; font-family: ui-monospace, monospace; font-size: 11px; text-align: center; }
+.help-reset { display: flex; justify-content: flex-end; padding-top: 12px; border-top: 1px solid rgb(55 53 47 / 8%); }
+.help-reset button { height: 32px; padding: 0 9px; border: 0; border-radius: 4px; background: transparent; font-size: 12px; }
+
 .trash-empty { margin: 8px 0 18px; color: #787774; font-size: 13px; text-align: center; }
 .trash-list { max-height: 360px; overflow-y: auto; }
 .trash-row { display: flex; min-height: 54px; align-items: center; gap: 9px; border-bottom: 1px solid rgb(55 53 47 / 6%); }

@@ -32,6 +32,7 @@ const settingsOpen = ref(false)
 const settingsName = ref('')
 const settingsEmail = ref('')
 const settingsError = ref('')
+const helpOpen = ref(false)
 const searchOpen = ref(false)
 const searchQuery = ref('')
 const searchInput = ref(null)
@@ -332,6 +333,20 @@ function openSearch() {
   nextTick(() => searchInput.value?.focus())
 }
 
+function openHelp() {
+  helpOpen.value = true
+}
+
+function resetWorkspace() {
+  if (!window.confirm('Reset this workspace? Your profile, pages, and trash will be deleted from this browser.')) return
+  localStorage.removeItem('notion-clone-profile')
+  localStorage.removeItem('notion-clone-pages')
+  localStorage.removeItem('notion-clone-trash')
+  localStorage.removeItem('notion-clone-active-page')
+  window.location.hash = ''
+  window.location.reload()
+}
+
 function openSettings() {
   settingsName.value = profile.value?.name || ''
   settingsEmail.value = profile.value?.email || ''
@@ -551,6 +566,7 @@ function permanentlyDeletePage(pageId) {
       @open-search="openSearch"
       @open-settings="openSettings"
       @open-trash="trashOpen = true"
+      @open-help="openHelp"
       @open-home="openHome"
       @open-inbox="openInbox"
       @open-calendar="openCalendar"
@@ -797,6 +813,29 @@ function permanentlyDeletePage(pageId) {
           <button type="button" @click="copyPageLink">{{ shareCopied ? 'Copied' : 'Copy link' }}</button>
         </div>
         <p v-if="shareMessage" class="share-message" aria-live="polite">{{ shareMessage }}</p>
+      </section>
+    </div>
+
+    <div v-if="helpOpen" class="share-backdrop" @click.self="helpOpen = false">
+      <section class="share-dialog help-dialog" role="dialog" aria-modal="true" aria-labelledby="help-heading">
+        <header class="share-dialog-header">
+          <h2 id="help-heading">Help & support</h2>
+          <button type="button" aria-label="Close help" @click="helpOpen = false"><X :size="17" /></button>
+        </header>
+        <div class="help-section">
+          <h3>Keyboard shortcuts</h3>
+          <div class="shortcut-row"><span>Search workspace</span><kbd>Ctrl K</kbd></div>
+          <div class="shortcut-row"><span>Move page up or down</span><kbd>Alt ↑ / ↓</kbd></div>
+          <div class="shortcut-row"><span>Close a dialog</span><kbd>Esc</kbd></div>
+        </div>
+        <div class="help-section">
+          <h3>Writing tips</h3>
+          <p>Type <kbd>/</kbd> in a paragraph to insert a heading, list, quote, or code block.</p>
+          <p>Use the formatting toolbar for bold, italic, lists, undo, and redo.</p>
+        </div>
+        <div class="help-reset">
+          <button type="button" class="trash-delete" @click="resetWorkspace">Reset local workspace</button>
+        </div>
       </section>
     </div>
 
