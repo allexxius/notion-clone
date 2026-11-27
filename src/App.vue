@@ -592,6 +592,23 @@ function setPageIcon(icon) {
   iconPickerOpen.value = false
 }
 
+function duplicateCurrentPage() {
+  if (!currentPage.value) return
+  const now = Date.now()
+  const copy = {
+    ...currentPage.value,
+    id: now,
+    title: `${currentPage.value.title || 'Untitled'} copy`,
+    updatedAt: now,
+    deletedAt: undefined
+  }
+  delete copy.deletedAt
+  pages.value.push(copy)
+  activePageId.value = copy.id
+  viewMode.value = 'page'
+  pageMenuOpen.value = false
+}
+
 function toggleFavorite() {
   if (currentPage.value) currentPage.value.favorite = !currentPage.value.favorite
   pageMenuOpen.value = false
@@ -713,6 +730,7 @@ function permanentlyDeletePage(pageId) {
               <MoreHorizontal :size="19" />
             </button>
             <div v-if="pageMenuOpen" class="page-menu">
+              <button type="button" @click="duplicateCurrentPage">Duplicate</button>
               <button type="button" @click="toggleFavorite">
                 {{ currentPage.favorite ? 'Remove from Favorites' : 'Add to Favorites' }}
               </button>
