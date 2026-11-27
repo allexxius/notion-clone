@@ -592,6 +592,90 @@ function setPageIcon(icon) {
   iconPickerOpen.value = false
 }
 
+function safeFileName(title) {
+  const fileName = (title || 'Untitled').trim().replace(/[^a-z0-9-_]+/gi, '-').replace(/^-+|-+$/g, '')
+  return fileName || 'Untitled'
+}
+
+function downloadPageFile(extension, content, type) {
+  const blob = new Blob([content], { type })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `${safeFileName(currentPage.value?.title)}.${extension}`
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+  pageMenuOpen.value = false
+}
+
+function htmlToMarkdown(html) {
+  const template = document.createElement('template')
+  template.innerHTML = html
+
+  function inline(node) {
+    if (node.nodeType === Node.TEXT_NODE) return node.textContent
+    if (node.nodeName === 'BR') return '\n'
+
+    const text = [...node.childNodes].map(inline).join('')
+    if (node.nodeName === 'A') return `[${text}](${node.getAttribute('href') || ''})`
+    if (node.nodeName === 'STRONG' || node.nodeName === 'B') return `**${text}**`
+    if (node.nodeName === 'EM' || node.nodeName === 'I') return `_${text}_`
+    if (node.nodeName === 'S' || node.nodeName === 'DEL') return `~~${text}~~`
+    if (node.nodeName === 'CODE') return `\`${text}\``
+    return text
+  }
+
+  function block(node, level = 0) {
+    const name = node.nodeName
+    if (name === 'P') return `${inline(node).trim()}\n\n`
+    if (name === 'H1') return `# ${inline(node).trim()}\n\n`
+    if (name === 'H2') return `## ${inline(node).trim()}\n\n`
+    if (name === 'H3') return `### ${inline(node).trim()}\n\n`
+    if (name === 'BLOCKQUOTE') return `${inline(node).trim().split('\n').map(line => `> ${line}`).join('\n')}\n\n`
+    if (name === 'PRE') return `\`\`\`\n${node.textContent || ''}\n\`\`\`\n\n`
+    if (name === 'UL' || name === 'OL') {
+      const ordered = name === 'OL'
+      return [...node.children].map((child, index) => {
+        if (child.nodeName === 'LI') {
+          const checked = child.dataset.checked
+          const prefix = checked !== undefined ? (checked === 'true' ? '- [x] ' : '- [ ] ') : ordered ? `${index + 1}. ` : '- '
+          return `${'  '.repeat(level)}${prefix}${inline(child).trim()}`
+        }
+        return ''
+      }).filter(Boolean).join('\n') + '\n\n'
+    }
+    if (name === 'HR') return '---\n\n'
+    return [...node.childNodes].map(child => child.nodeType === Node.TEXT_NODE ? child.textContent : block(child, level)).join('')
+  }
+
+  return `${currentPage.value?.title ? `# ${currentPage.value.title}\n\n` : ''}${[...template.content.childNodes].map(node => node.nodeType === Node.TEXT_NODE ? node.textContent : block(node)).join('').trim()}\n`
+}
+
+function exportMarkdown() {
+  if (!currentPage.value) return
+  downloadPageFile('md', htmlToMarkdown(currentPage.value.content || ''), 'text/markdown;charset=utf-8')
+}
+
+function exportHtml() {
+  if (!currentPage.value) return
+  const title = escapeHtml(currentPage.value.title || 'Untitled')
+  const documentHtml = `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title></head><body><h1>${title}</h1>${currentPage.value.content || ''}</body></html>`
+  downloadPageFile('html', documentHtml, 'text/html;charset=utf-8')
+}
+
+function exportPlainText() {
+  if (!currentPage.value) return
+  const text = `${currentPage.value.title || 'Untitled'}\n\n${editor.value?.getText() || ''}`
+  downloadPageFile('txt', text, 'text/plain;charset=utf-8')
+}
+
+function printPage() {
+  pageMenuOpen.value = false
+  window.print()
+}
+
 function duplicateCurrentPage() {
   if (!currentPage.value) return
   const now = Date.now()
@@ -731,6 +815,10 @@ function permanentlyDeletePage(pageId) {
             </button>
             <div v-if="pageMenuOpen" class="page-menu">
               <button type="button" @click="duplicateCurrentPage">Duplicate</button>
+              <button type="button" @click="exportMarkdown">Export Markdown</button>
+              <button type="button" @click="exportHtml">Export HTML</button>
+              <button type="button" @click="exportPlainText">Export plain text</button>
+              <button type="button" @click="printPage">Print</button>
               <button type="button" @click="toggleFavorite">
                 {{ currentPage.favorite ? 'Remove from Favorites' : 'Add to Favorites' }}
               </button>

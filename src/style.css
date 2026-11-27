@@ -947,6 +947,35 @@ kbd { min-width: 24px; padding: 2px 6px; border: 1px solid rgb(55 53 47 / 12%); 
   .breadcrumb > span:nth-child(2) { max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }
 
+@media print {
+  body { background: #fff !important; }
+  .sidebar,
+  .topbar,
+  .editor-toolbar,
+  .block-drag-handle,
+  .page-outline,
+  .page-properties,
+  .page-cover-control,
+  .page-cover-change,
+  .icon-picker,
+  .cover-picker,
+  .search-backdrop,
+  .share-backdrop,
+  .slash-menu,
+  .selection-bubble-menu,
+  .link-popover,
+  .color-popover,
+  .page-menu { display: none !important; }
+  .app-layout,
+  .main-content,
+  .page-container { height: auto !important; overflow: visible !important; }
+  .page-content,
+  .page-content.has-cover { width: 100% !important; margin: 0 !important; padding: 18px 24px !important; }
+  .page-cover { margin: 0 0 24px !important; print-color-adjust: exact; }
+  .page-title-input { border: 0; }
+  .page-editor .tiptap { min-height: 0; }
+}
+
 @media (max-width: 480px) {
   .brand { top: 20px; left: 20px; }
   .login-panel h1 { font-size: 30px; }
