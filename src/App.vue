@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
+import DragHandle from '@tiptap/extension-drag-handle'
 import {
   Bold, ChevronLeft, ChevronRight, Code2, Heading1, Heading2, Italic, List, ListOrdered,
   Menu, MoreHorizontal, Quote, Redo2, Search, Share2, Undo2, X
@@ -115,7 +116,18 @@ const editor = useEditor({
   content: '',
   extensions: [
     StarterKit,
-    Placeholder.configure({ placeholder: 'Start writing...' })
+    Placeholder.configure({ placeholder: 'Start writing...' }),
+    DragHandle.configure({
+      nested: true,
+      render: () => {
+        const handle = document.createElement('button')
+        handle.type = 'button'
+        handle.className = 'block-drag-handle'
+        handle.setAttribute('aria-label', 'Drag block')
+        handle.innerHTML = '<span></span><span></span><span></span><span></span><span></span><span></span>'
+        return handle
+      }
+    })
   ],
   onUpdate: ({ editor: activeEditor }) => {
     if (!currentPage.value) return

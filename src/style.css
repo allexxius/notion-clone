@@ -579,6 +579,25 @@ textarea { font: inherit; }
 
 .slash-menu-empty { margin: 0; padding: 12px 8px; color: #787774; font-size: 13px; }
 
+.block-drag-handle {
+  display: grid;
+  grid-template-columns: repeat(2, 3px);
+  grid-auto-rows: 3px;
+  gap: 2px;
+  width: 18px;
+  height: 26px;
+  padding: 6px 5px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  cursor: grab;
+  opacity: 0.7;
+}
+
+.block-drag-handle:hover { background: #efefec; opacity: 1; }
+.block-drag-handle:active { cursor: grabbing; }
+.block-drag-handle span { width: 3px; height: 3px; border-radius: 50%; background: #9b9a97; }
+
 /* Page action popovers */
 .icon-picker,
 .page-menu {
