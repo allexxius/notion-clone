@@ -496,6 +496,16 @@ select { font: inherit; }
 .editor-toolbar button:disabled:hover { background: transparent; }
 .toolbar-divider { width: 1px; height: 18px; margin: 0 4px; background: rgb(55 53 47 / 12%); }
 .toolbar-spacer { flex: 1; }
+.image-control { position: relative; }
+.image-popover { position: absolute; z-index: 40; top: 32px; right: 0; width: 280px; padding: 10px; border: 1px solid rgb(15 15 15 / 9%); border-radius: 6px; background: #fff; box-shadow: 0 6px 24px rgb(15 15 15 / 12%); }
+.image-popover p { margin: 0 0 8px; color: #37352f; font-size: 12px; font-weight: 600; }
+.image-popover > span { display: block; margin: 8px 0 5px; color: #787774; font-size: 11px; }
+.image-popover input { width: 100%; max-width: 100%; }
+.image-popover input[type="file"] { height: 34px; padding: 6px; border: 1px solid #d9d9d6; border-radius: 4px; font-size: 11px; }
+.image-url-input { height: 34px; padding: 0 8px; border: 1px solid #d9d9d6; border-radius: 4px; outline: 0; color: #37352f; font-size: 12px; }
+.image-error { margin: 6px 0 0 !important; color: #d44c47 !important; font-weight: 400 !important; }
+.image-apply { height: 30px; margin-top: 8px; padding: 0 9px; border: 0; border-radius: 4px; background: #2383e2; color: #fff; font-size: 12px; cursor: pointer; }
+.image-apply:hover { background: #1976cc; }
 .color-control { position: relative; }
 .color-popover { position: absolute; z-index: 40; top: 32px; left: 0; width: 190px; padding: 8px; border: 1px solid rgb(15 15 15 / 9%); border-radius: 6px; background: #fff; box-shadow: 0 6px 24px rgb(15 15 15 / 12%); }
 .color-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; margin-bottom: 7px; }
@@ -527,6 +537,7 @@ select { font: inherit; }
 .page-editor .tiptap > :first-child { margin-top: 0; }
 .page-editor .tiptap p { margin: 0 0 0.55em; }
 .page-editor .tiptap a { color: #2383e2; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px; }
+.page-editor .tiptap img { max-width: 100%; height: auto; display: block; margin: 12px 0; border-radius: 3px; }
 .page-editor .tiptap h1,
 .page-editor .tiptap h2,
 .page-editor .tiptap h3 { color: #37352f; font-family: inherit; letter-spacing: 0; }

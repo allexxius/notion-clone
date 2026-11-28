@@ -11,12 +11,13 @@ import Link from '@tiptap/extension-link'
 import { TextStyle } from '@tiptap/extension-text-style'
 import { Color } from '@tiptap/extension-color'
 import Highlight from '@tiptap/extension-highlight'
+import Image from '@tiptap/extension-image'
 import { Table } from '@tiptap/extension-table'
 import { TableRow } from '@tiptap/extension-table-row'
 import { TableCell } from '@tiptap/extension-table-cell'
 import { TableHeader } from '@tiptap/extension-table-header'
 import {
-  Bold, ChevronLeft, ChevronRight, Code2, Heading1, Heading2, Italic, Link2, List, ListOrdered, ListTodo, Palette, Table2,
+  Bold, ChevronLeft, ChevronRight, Code2, Heading1, Heading2, ImagePlus, Italic, Link2, List, ListOrdered, ListTodo, Palette, Table2,
   Menu, MoreHorizontal, Quote, Redo2, Search, Share2, Strikethrough, Undo2, X, Rows3, Columns3, Trash2
 } from 'lucide-vue-next'
 import Sidebar from './components/Sidebar.vue'
@@ -66,6 +67,10 @@ const linkOpen = ref(false)
 const linkUrl = ref('')
 const colorOpen = ref(false)
 const colorMode = ref('text')
+const imageOpen = ref(false)
+const imageUrl = ref('')
+const imageError = ref('')
+const imageFileInput = ref(null)
 const pageIcons = ['👋', '📄', '📚', '🎯', '💡', '✅', '🌱', '🚀', '⭐', '📝', '🎨', '🧠']
 const pageCovers = [
   { id: 'mist', label: 'Soft mist', className: 'cover-mist' },
@@ -127,6 +132,7 @@ const slashCommands = [
   { id: 'orderedList', label: 'Numbered list', keywords: 'numbered ordered list ol', icon: ListOrdered },
   { id: 'taskList', label: 'To-do list', keywords: 'todo checkbox task', icon: ListTodo },
   { id: 'table', label: 'Table', keywords: 'table grid rows columns', icon: Table2 },
+  { id: 'image', label: 'Image', keywords: 'image photo picture upload', icon: ImagePlus },
   { id: 'blockquote', label: 'Quote', keywords: 'quote callout', icon: Quote },
   { id: 'codeBlock', label: 'Code block', keywords: 'code', icon: Code2 }
 ]
@@ -154,6 +160,7 @@ const editor = useEditor({
     TableRow,
     TableHeader,
     TableCell,
+    Image.configure({ inline: false, allowBase64: true }),
     DragHandle.configure({
       nested: true,
       render: () => {
@@ -691,6 +698,11 @@ function applySlashCommand(command) {
     orderedList: () => chain.toggleOrderedList().run(),
     taskList: () => chain.toggleTaskList().run(),
     table: () => chain.insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
+    image: () => {
+      chain.run()
+      imageOpen.value = true
+      nextTick(() => document.querySelector('.image-url-input')?.focus())
+    },
     blockquote: () => chain.toggleBlockquote().run(),
     codeBlock: () => chain.toggleCodeBlock().run()
   }
@@ -698,6 +710,49 @@ function applySlashCommand(command) {
   actions[command.id]?.()
   slashMenuOpen.value = false
   slashQuery.value = ''
+}
+
+function openImagePicker() {
+  imageUrl.value = ''
+  imageError.value = ''
+  imageOpen.value = !imageOpen.value
+}
+
+function insertImageUrl() {
+  const rawUrl = imageUrl.value.trim()
+  if (!rawUrl) {
+    imageError.value = 'Enter an image URL.'
+    return
+  }
+  const src = /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`
+  editor.value?.chain().focus().setImage({ src }).run()
+  imageUrl.value = ''
+  imageError.value = ''
+  imageOpen.value = false
+}
+
+function insertLocalImage(event) {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  if (!file) return
+  if (!file.type.startsWith('image/')) {
+    imageError.value = 'Choose an image file.'
+    return
+  }
+  if (file.size > 1_500_000) {
+    imageError.value = 'Choose an image smaller than 1.5 MB.'
+    return
+  }
+  const reader = new FileReader()
+  reader.onload = () => {
+    if (typeof reader.result === 'string') {
+      editor.value?.chain().focus().setImage({ src: reader.result, alt: file.name }).run()
+      imageOpen.value = false
+      imageError.value = ''
+    }
+  }
+  reader.onerror = () => { imageError.value = 'Could not read that image.' }
+  reader.readAsDataURL(file)
 }
 
 function setPageCover(cover) {
@@ -1122,6 +1177,17 @@ function permanentlyDeletePage(pageId) {
             <button type="button" title="Numbered list" aria-label="Numbered list" :class="{ active: editor?.isActive('orderedList') }" @mousedown.prevent @click="runEditorCommand(chain => chain.toggleOrderedList())"><ListOrdered :size="17" /></button>
             <button type="button" title="To-do list" aria-label="To-do list" :class="{ active: editor?.isActive('taskList') }" @mousedown.prevent @click="runEditorCommand(chain => chain.toggleTaskList())"><ListTodo :size="17" /></button>
             <button type="button" title="Quote" aria-label="Quote" :class="{ active: editor?.isActive('blockquote') }" @mousedown.prevent @click="runEditorCommand(chain => chain.toggleBlockquote())"><Quote :size="16" /></button>
+            <div class="image-control">
+              <button type="button" title="Add image" aria-label="Add image" @mousedown.prevent @click="openImagePicker"><ImagePlus :size="16" /></button>
+              <div v-if="imageOpen" class="image-popover">
+                <p>Add an image</p>
+                <input ref="imageFileInput" type="file" accept="image/*" @change="insertLocalImage" />
+                <span>or add a URL</span>
+                <input v-model="imageUrl" class="image-url-input" type="url" placeholder="https://example.com/image.jpg" @keydown.enter.prevent="insertImageUrl" />
+                <p v-if="imageError" class="image-error">{{ imageError }}</p>
+                <button type="button" class="image-apply" @click="insertImageUrl">Add image</button>
+              </div>
+            </div>
             <template v-if="editor?.isActive('table')">
               <span class="toolbar-divider"></span>
               <button type="button" title="Add row below" aria-label="Add row below" @mousedown.prevent @click="runEditorCommand(chain => chain.addRowAfter())"><Rows3 :size="16" /></button>
