@@ -19,7 +19,7 @@ import { TableCell } from '@tiptap/extension-table-cell'
 import { TableHeader } from '@tiptap/extension-table-header'
 import {
   Bold, ChevronLeft, ChevronRight, Code2, Heading1, Heading2, ImagePlus, Italic, Link2, List, ListOrdered, ListTodo, Palette, Table2, Video,
-  Menu, MoreHorizontal, Quote, Redo2, Search, Share2, Strikethrough, Undo2, X, Rows3, Columns3, Trash2, AudioLines
+  Menu, MoreHorizontal, Quote, Redo2, Search, Share2, Strikethrough, Undo2, X, Rows3, Columns3, Trash2, AudioLines, FileText
 } from 'lucide-vue-next'
 import Sidebar from './components/Sidebar.vue'
 
@@ -78,6 +78,8 @@ const videoError = ref('')
 const audioOpen = ref(false)
 const audioUrl = ref('')
 const audioError = ref('')
+const fileOpen = ref(false)
+const fileError = ref('')
 const pageIcons = ['👋', '📄', '📚', '🎯', '💡', '✅', '🌱', '🚀', '⭐', '📝', '🎨', '🧠']
 const pageCovers = [
   { id: 'mist', label: 'Soft mist', className: 'cover-mist' },
@@ -142,6 +144,7 @@ const slashCommands = [
   { id: 'image', label: 'Image', keywords: 'image photo picture upload', icon: ImagePlus },
   { id: 'video', label: 'Video embed', keywords: 'video youtube mp4 embed', icon: Video },
   { id: 'audio', label: 'Audio', keywords: 'audio mp3 wav ogg music', icon: AudioLines },
+  { id: 'file', label: 'File', keywords: 'file attachment pdf document download', icon: FileText },
   { id: 'blockquote', label: 'Quote', keywords: 'quote callout', icon: Quote },
   { id: 'codeBlock', label: 'Code block', keywords: 'code', icon: Code2 }
 ]
@@ -198,6 +201,40 @@ const AudioEmbed = Node.create({
   }
 })
 
+const FileEmbed = Node.create({
+  name: 'fileEmbed',
+  group: 'block',
+  atom: true,
+  addAttributes() {
+    return {
+      src: { default: null },
+      name: { default: 'File' },
+      size: { default: 0 }
+    }
+  },
+  parseHTML() {
+    return [{ tag: 'div[data-file-embed]' }]
+  },
+  renderHTML({ HTMLAttributes }) {
+    const size = Number(HTMLAttributes.size) || 0
+    const sizeLabel = size < 1024 * 1024 ? `${Math.max(1, Math.round(size / 1024))} KB` : `${(size / (1024 * 1024)).toFixed(1)} MB`
+    return ['div', { 'data-file-embed': 'true', class: 'file-embed' },
+      ['a', { href: HTMLAttributes.src, download: HTMLAttributes.name },
+        ['span', { class: 'file-embed-icon' }, '📄'],
+        ['span', { class: 'file-embed-copy' },
+          ['strong', {}, HTMLAttributes.name],
+          ['small', {}, sizeLabel]
+        ]
+      ]
+    ]
+  },
+  addCommands() {
+    return {
+      setFileEmbed: attributes => ({ commands }) => commands.insertContent({ type: this.name, attrs: attributes })
+    }
+  }
+})
+
 const currentPage = computed(() => pages.value.find(page => page.id === activePageId.value) || pages.value[0])
 const pageLink = computed(() => {
   if (!currentPage.value) return ''
@@ -224,6 +261,7 @@ const editor = useEditor({
     Image.configure({ inline: false, allowBase64: true }),
     VideoEmbed,
     AudioEmbed,
+    FileEmbed,
     DragHandle.configure({
       nested: true,
       render: () => {
@@ -761,6 +799,11 @@ function applySlashCommand(command) {
     orderedList: () => chain.toggleOrderedList().run(),
     taskList: () => chain.toggleTaskList().run(),
     table: () => chain.insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
+    file: () => {
+      chain.run()
+      fileOpen.value = true
+      nextTick(() => document.querySelector('.file-upload-input')?.click())
+    },
     audio: () => {
       chain.run()
       audioOpen.value = true
@@ -783,6 +826,34 @@ function applySlashCommand(command) {
   actions[command.id]?.()
   slashMenuOpen.value = false
   slashQuery.value = ''
+}
+
+function openFilePicker() {
+  fileError.value = ''
+  fileOpen.value = !fileOpen.value
+}
+
+function insertLocalFile(event) {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  if (!file) return
+  if (file.size > 2_000_000) {
+    fileError.value = 'Choose a file smaller than 2 MB.'
+    fileOpen.value = true
+    return
+  }
+  const reader = new FileReader()
+  reader.onload = () => {
+    if (typeof reader.result === 'string') {
+      editor.value?.chain().focus().setFileEmbed({ src: reader.result, name: file.name, size: file.size }).run()
+      fileOpen.value = false
+      fileError.value = ''
+    }
+  }
+  reader.onerror = () => {
+    fileError.value = 'Could not read that file.'
+  }
+  reader.readAsDataURL(file)
 }
 
 function openAudioPicker() {
@@ -1331,6 +1402,14 @@ function permanentlyDeletePage(pageId) {
                 <input v-model="imageUrl" class="image-url-input" type="url" placeholder="https://example.com/image.jpg" @keydown.enter.prevent="insertImageUrl" />
                 <p v-if="imageError" class="image-error">{{ imageError }}</p>
                 <button type="button" class="image-apply" @click="insertImageUrl">Add image</button>
+              </div>
+            </div>
+            <div class="file-control">
+              <button type="button" title="Add file" aria-label="Add file" @mousedown.prevent @click="openFilePicker"><FileText :size="16" /></button>
+              <div v-if="fileOpen" class="file-popover">
+                <p>Upload a file</p>
+                <input ref="fileUploadInput" class="file-upload-input" type="file" @change="insertLocalFile" />
+                <p v-if="fileError" class="file-error">{{ fileError }}</p>
               </div>
             </div>
             <div class="audio-control">

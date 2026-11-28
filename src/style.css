@@ -496,6 +496,18 @@ select { font: inherit; }
 .editor-toolbar button:disabled:hover { background: transparent; }
 .toolbar-divider { width: 1px; height: 18px; margin: 0 4px; background: rgb(55 53 47 / 12%); }
 .toolbar-spacer { flex: 1; }
+.file-control { position: relative; }
+.file-popover { position: absolute; z-index: 40; top: 32px; right: 0; width: 280px; padding: 10px; border: 1px solid rgb(15 15 15 / 9%); border-radius: 6px; background: #fff; box-shadow: 0 6px 24px rgb(15 15 15 / 12%); }
+.file-popover p { margin: 0 0 8px; color: #37352f; font-size: 12px; font-weight: 600; }
+.file-upload-input { width: 100%; font-size: 11px; }
+.file-error { margin: 6px 0 0 !important; color: #d44c47 !important; font-weight: 400 !important; }
+.file-embed { width: 100%; margin: 10px 0; }
+.file-embed a { display: flex; min-height: 58px; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid rgb(55 53 47 / 10%); border-radius: 5px; color: #37352f; text-decoration: none; }
+.file-embed a:hover { background: #f7f7f5; }
+.file-embed-icon { width: 32px; text-align: center; font-size: 20px; }
+.file-embed-copy { display: flex; flex-direction: column; }
+.file-embed-copy strong { font-size: 13px; }
+.file-embed-copy small { color: #787774; font-size: 11px; }
 .audio-control { position: relative; }
 .audio-popover { position: absolute; z-index: 40; top: 32px; right: 0; width: 280px; padding: 10px; border: 1px solid rgb(15 15 15 / 9%); border-radius: 6px; background: #fff; box-shadow: 0 6px 24px rgb(15 15 15 / 12%); }
 .audio-popover p { margin: 0 0 8px; color: #37352f; font-size: 12px; font-weight: 600; }
