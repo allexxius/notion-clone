@@ -496,6 +496,20 @@ select { font: inherit; }
 .editor-toolbar button:disabled:hover { background: transparent; }
 .toolbar-divider { width: 1px; height: 18px; margin: 0 4px; background: rgb(55 53 47 / 12%); }
 .toolbar-spacer { flex: 1; }
+.bookmark-control { position: relative; }
+.bookmark-popover { position: absolute; z-index: 40; top: 32px; right: 0; width: 280px; padding: 10px; border: 1px solid rgb(15 15 15 / 9%); border-radius: 6px; background: #fff; box-shadow: 0 6px 24px rgb(15 15 15 / 12%); }
+.bookmark-popover p { margin: 0 0 8px; color: #37352f; font-size: 12px; font-weight: 600; }
+.bookmark-url-input { width: 100%; height: 34px; padding: 0 8px; border: 1px solid #d9d9d6; border-radius: 4px; outline: 0; color: #37352f; font-size: 12px; }
+.bookmark-error { margin: 6px 0 0 !important; color: #d44c47 !important; font-weight: 400 !important; }
+.bookmark-apply { height: 30px; margin-top: 8px; padding: 0 9px; border: 0; border-radius: 4px; background: #2383e2; color: #fff; font-size: 12px; cursor: pointer; }
+.bookmark-apply:hover { background: #1976cc; }
+.bookmark-card { width: 100%; margin: 10px 0; }
+.bookmark-card a { display: flex; min-height: 72px; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 1px solid rgb(55 53 47 / 12%); border-radius: 5px; color: #37352f; text-decoration: none; }
+.bookmark-card a:hover { background: #f7f7f5; }
+.bookmark-copy { display: flex; min-width: 0; flex: 1; flex-direction: column; }
+.bookmark-copy strong { font-size: 13px; }
+.bookmark-copy small { overflow: hidden; color: #787774; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.bookmark-domain { color: #787774; font-size: 11px; }
 .embed-control { position: relative; }
 .embed-popover { position: absolute; z-index: 40; top: 32px; right: 0; width: 280px; padding: 10px; border: 1px solid rgb(15 15 15 / 9%); border-radius: 6px; background: #fff; box-shadow: 0 6px 24px rgb(15 15 15 / 12%); }
 .embed-popover p { margin: 0 0 8px; color: #37352f; font-size: 12px; font-weight: 600; }

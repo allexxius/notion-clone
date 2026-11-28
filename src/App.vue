@@ -19,7 +19,7 @@ import { TableCell } from '@tiptap/extension-table-cell'
 import { TableHeader } from '@tiptap/extension-table-header'
 import {
   Bold, ChevronLeft, ChevronRight, Code2, Heading1, Heading2, ImagePlus, Italic, Link2, List, ListOrdered, ListTodo, Palette, Table2, Video,
-  Menu, MoreHorizontal, Quote, Redo2, Search, Share2, Strikethrough, Undo2, X, Rows3, Columns3, Trash2, AudioLines, FileText, Globe
+  Menu, MoreHorizontal, Quote, Redo2, Search, Share2, Strikethrough, Undo2, X, Rows3, Columns3, Trash2, AudioLines, FileText, Globe, Bookmark
 } from 'lucide-vue-next'
 import Sidebar from './components/Sidebar.vue'
 
@@ -82,6 +82,9 @@ const fileOpen = ref(false)
 const embedOpen = ref(false)
 const embedUrl = ref('')
 const embedError = ref('')
+const bookmarkOpen = ref(false)
+const bookmarkUrl = ref('')
+const bookmarkError = ref('')
 const fileError = ref('')
 const pageIcons = ['👋', '📄', '📚', '🎯', '💡', '✅', '🌱', '🚀', '⭐', '📝', '🎨', '🧠']
 const pageCovers = [
@@ -149,6 +152,7 @@ const slashCommands = [
   { id: 'audio', label: 'Audio', keywords: 'audio mp3 wav ogg music', icon: AudioLines },
   { id: 'file', label: 'File', keywords: 'file attachment pdf document download', icon: FileText },
   { id: 'embed', label: 'Embed', keywords: 'embed web page website iframe', icon: Globe },
+  { id: 'bookmark', label: 'Bookmark', keywords: 'bookmark link card url', icon: Bookmark },
   { id: 'blockquote', label: 'Quote', keywords: 'quote callout', icon: Quote },
   { id: 'codeBlock', label: 'Code block', keywords: 'code', icon: Code2 }
 ]
@@ -266,6 +270,34 @@ const WebEmbed = Node.create({
   }
 })
 
+const BookmarkCard = Node.create({
+  name: 'bookmarkCard',
+  group: 'block',
+  atom: true,
+  addAttributes() {
+    return { src: { default: null }, title: { default: '' }, domain: { default: '' } }
+  },
+  parseHTML() {
+    return [{ tag: 'div[data-bookmark-card]' }]
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ['div', { 'data-bookmark-card': 'true', class: 'bookmark-card' },
+      ['a', { href: HTMLAttributes.src, target: '_blank', rel: 'noopener noreferrer' },
+        ['span', { class: 'bookmark-copy' },
+          ['strong', {}, HTMLAttributes.title || 'Bookmark'],
+          ['small', {}, HTMLAttributes.src]
+        ],
+        ['span', { class: 'bookmark-domain' }, HTMLAttributes.domain]
+      ]
+    ]
+  },
+  addCommands() {
+    return {
+      setBookmarkCard: attributes => ({ commands }) => commands.insertContent({ type: this.name, attrs: attributes })
+    }
+  }
+})
+
 const currentPage = computed(() => pages.value.find(page => page.id === activePageId.value) || pages.value[0])
 const pageLink = computed(() => {
   if (!currentPage.value) return ''
@@ -294,6 +326,7 @@ const editor = useEditor({
     AudioEmbed,
     FileEmbed,
     WebEmbed,
+    BookmarkCard,
     DragHandle.configure({
       nested: true,
       render: () => {
@@ -831,6 +864,11 @@ function applySlashCommand(command) {
     orderedList: () => chain.toggleOrderedList().run(),
     taskList: () => chain.toggleTaskList().run(),
     table: () => chain.insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
+    bookmark: () => {
+      chain.run()
+      bookmarkOpen.value = true
+      nextTick(() => document.querySelector('.bookmark-url-input')?.focus())
+    },
     embed: () => {
       chain.run()
       embedOpen.value = true
@@ -863,6 +901,31 @@ function applySlashCommand(command) {
   actions[command.id]?.()
   slashMenuOpen.value = false
   slashQuery.value = ''
+}
+
+function openBookmarkPicker() {
+  bookmarkUrl.value = ''
+  bookmarkError.value = ''
+  bookmarkOpen.value = !bookmarkOpen.value
+}
+
+function insertBookmark() {
+  const rawUrl = bookmarkUrl.value.trim()
+  try {
+    const parsed = new URL(/^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`)
+    if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('invalid')
+    const title = parsed.hostname.replace(/^www\./, '')
+    editor.value?.chain().focus().setBookmarkCard({
+      src: parsed.toString(),
+      title,
+      domain: parsed.hostname.replace(/^www\./, '')
+    }).run()
+    bookmarkUrl.value = ''
+    bookmarkError.value = ''
+    bookmarkOpen.value = false
+  } catch {
+    bookmarkError.value = 'Enter a valid web address.'
+  }
 }
 
 function openEmbedPicker() {
@@ -1481,6 +1544,15 @@ function permanentlyDeletePage(pageId) {
                 <input v-model="imageUrl" class="image-url-input" type="url" placeholder="https://example.com/image.jpg" @keydown.enter.prevent="insertImageUrl" />
                 <p v-if="imageError" class="image-error">{{ imageError }}</p>
                 <button type="button" class="image-apply" @click="insertImageUrl">Add image</button>
+              </div>
+            </div>
+            <div class="bookmark-control">
+              <button type="button" title="Add bookmark" aria-label="Add bookmark" @mousedown.prevent @click="openBookmarkPicker"><Bookmark :size="16" /></button>
+              <div v-if="bookmarkOpen" class="bookmark-popover">
+                <p>Add a bookmark</p>
+                <input v-model="bookmarkUrl" class="bookmark-url-input" type="url" placeholder="https://example.com" @keydown.enter.prevent="insertBookmark" />
+                <p v-if="bookmarkError" class="bookmark-error">{{ bookmarkError }}</p>
+                <button type="button" class="bookmark-apply" @click="insertBookmark">Add bookmark</button>
               </div>
             </div>
             <div class="embed-control">
