@@ -19,7 +19,7 @@ import { TableCell } from '@tiptap/extension-table-cell'
 import { TableHeader } from '@tiptap/extension-table-header'
 import {
   Bold, ChevronLeft, ChevronRight, Code2, Heading1, Heading2, ImagePlus, Italic, Link2, List, ListOrdered, ListTodo, Palette, Table2, Video,
-  Menu, MoreHorizontal, Quote, Redo2, Search, Share2, Strikethrough, Undo2, X, Rows3, Columns3, Trash2
+  Menu, MoreHorizontal, Quote, Redo2, Search, Share2, Strikethrough, Undo2, X, Rows3, Columns3, Trash2, AudioLines
 } from 'lucide-vue-next'
 import Sidebar from './components/Sidebar.vue'
 
@@ -75,6 +75,9 @@ const imageFileInput = ref(null)
 const videoOpen = ref(false)
 const videoUrl = ref('')
 const videoError = ref('')
+const audioOpen = ref(false)
+const audioUrl = ref('')
+const audioError = ref('')
 const pageIcons = ['👋', '📄', '📚', '🎯', '💡', '✅', '🌱', '🚀', '⭐', '📝', '🎨', '🧠']
 const pageCovers = [
   { id: 'mist', label: 'Soft mist', className: 'cover-mist' },
@@ -138,6 +141,7 @@ const slashCommands = [
   { id: 'table', label: 'Table', keywords: 'table grid rows columns', icon: Table2 },
   { id: 'image', label: 'Image', keywords: 'image photo picture upload', icon: ImagePlus },
   { id: 'video', label: 'Video embed', keywords: 'video youtube mp4 embed', icon: Video },
+  { id: 'audio', label: 'Audio', keywords: 'audio mp3 wav ogg music', icon: AudioLines },
   { id: 'blockquote', label: 'Quote', keywords: 'quote callout', icon: Quote },
   { id: 'codeBlock', label: 'Code block', keywords: 'code', icon: Code2 }
 ]
@@ -174,6 +178,26 @@ const VideoEmbed = Node.create({
   }
 })
 
+const AudioEmbed = Node.create({
+  name: 'audioEmbed',
+  group: 'block',
+  atom: true,
+  addAttributes() {
+    return { src: { default: null } }
+  },
+  parseHTML() {
+    return [{ tag: 'div[data-audio-embed]' }]
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ['div', { 'data-audio-embed': 'true', class: 'audio-embed' }, ['audio', { src: HTMLAttributes.src, controls: 'true' }]]
+  },
+  addCommands() {
+    return {
+      setAudioEmbed: attributes => ({ commands }) => commands.insertContent({ type: this.name, attrs: attributes })
+    }
+  }
+})
+
 const currentPage = computed(() => pages.value.find(page => page.id === activePageId.value) || pages.value[0])
 const pageLink = computed(() => {
   if (!currentPage.value) return ''
@@ -199,6 +223,7 @@ const editor = useEditor({
     TableCell,
     Image.configure({ inline: false, allowBase64: true }),
     VideoEmbed,
+    AudioEmbed,
     DragHandle.configure({
       nested: true,
       render: () => {
@@ -736,6 +761,11 @@ function applySlashCommand(command) {
     orderedList: () => chain.toggleOrderedList().run(),
     taskList: () => chain.toggleTaskList().run(),
     table: () => chain.insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
+    audio: () => {
+      chain.run()
+      audioOpen.value = true
+      nextTick(() => document.querySelector('.audio-url-input')?.focus())
+    },
     video: () => {
       chain.run()
       videoOpen.value = true
@@ -753,6 +783,33 @@ function applySlashCommand(command) {
   actions[command.id]?.()
   slashMenuOpen.value = false
   slashQuery.value = ''
+}
+
+function openAudioPicker() {
+  audioUrl.value = ''
+  audioError.value = ''
+  audioOpen.value = !audioOpen.value
+}
+
+function insertAudioUrl() {
+  const rawUrl = audioUrl.value.trim()
+  if (!/^https?:\/\//i.test(rawUrl)) {
+    audioError.value = 'Enter a direct audio URL beginning with http or https.'
+    return
+  }
+  try {
+    const parsed = new URL(rawUrl)
+    if (!/\.(mp3|ogg|wav|m4a|aac)($|[?])/i.test(parsed.pathname)) {
+      audioError.value = 'Use a direct MP3, OGG, WAV, M4A, or AAC URL.'
+      return
+    }
+    editor.value?.chain().focus().setAudioEmbed({ src: parsed.toString() }).run()
+    audioUrl.value = ''
+    audioError.value = ''
+    audioOpen.value = false
+  } catch {
+    audioError.value = 'Enter a valid audio URL.'
+  }
 }
 
 function openVideoPicker() {
@@ -1274,6 +1331,15 @@ function permanentlyDeletePage(pageId) {
                 <input v-model="imageUrl" class="image-url-input" type="url" placeholder="https://example.com/image.jpg" @keydown.enter.prevent="insertImageUrl" />
                 <p v-if="imageError" class="image-error">{{ imageError }}</p>
                 <button type="button" class="image-apply" @click="insertImageUrl">Add image</button>
+              </div>
+            </div>
+            <div class="audio-control">
+              <button type="button" title="Add audio" aria-label="Add audio" @mousedown.prevent @click="openAudioPicker"><AudioLines :size="16" /></button>
+              <div v-if="audioOpen" class="audio-popover">
+                <p>Add audio</p>
+                <input v-model="audioUrl" class="audio-url-input" type="url" placeholder="https://example.com/audio.mp3" @keydown.enter.prevent="insertAudioUrl" />
+                <p v-if="audioError" class="audio-error">{{ audioError }}</p>
+                <button type="button" class="audio-apply" @click="insertAudioUrl">Embed audio</button>
               </div>
             </div>
             <div class="video-control">

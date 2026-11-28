@@ -496,6 +496,15 @@ select { font: inherit; }
 .editor-toolbar button:disabled:hover { background: transparent; }
 .toolbar-divider { width: 1px; height: 18px; margin: 0 4px; background: rgb(55 53 47 / 12%); }
 .toolbar-spacer { flex: 1; }
+.audio-control { position: relative; }
+.audio-popover { position: absolute; z-index: 40; top: 32px; right: 0; width: 280px; padding: 10px; border: 1px solid rgb(15 15 15 / 9%); border-radius: 6px; background: #fff; box-shadow: 0 6px 24px rgb(15 15 15 / 12%); }
+.audio-popover p { margin: 0 0 8px; color: #37352f; font-size: 12px; font-weight: 600; }
+.audio-url-input { width: 100%; height: 34px; padding: 0 8px; border: 1px solid #d9d9d6; border-radius: 4px; outline: 0; color: #37352f; font-size: 12px; }
+.audio-error { margin: 6px 0 0 !important; color: #d44c47 !important; font-weight: 400 !important; }
+.audio-apply { height: 30px; margin-top: 8px; padding: 0 9px; border: 0; border-radius: 4px; background: #2383e2; color: #fff; font-size: 12px; cursor: pointer; }
+.audio-apply:hover { background: #1976cc; }
+.audio-embed { width: 100%; margin: 12px 0; }
+.audio-embed audio { width: 100%; }
 .video-control { position: relative; }
 .video-popover { position: absolute; z-index: 40; top: 32px; right: 0; width: 280px; padding: 10px; border: 1px solid rgb(15 15 15 / 9%); border-radius: 6px; background: #fff; box-shadow: 0 6px 24px rgb(15 15 15 / 12%); }
 .video-popover p { margin: 0 0 8px; color: #37352f; font-size: 12px; font-weight: 600; }
