@@ -1,5 +1,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import katex from 'katex'
+import 'katex/dist/katex.min.css'
 import { Node } from '@tiptap/core'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import { BubbleMenu } from '@tiptap/vue-3/menus'
@@ -19,7 +21,7 @@ import { TableCell } from '@tiptap/extension-table-cell'
 import { TableHeader } from '@tiptap/extension-table-header'
 import {
   Bold, ChevronLeft, ChevronRight, Code2, Heading1, Heading2, ImagePlus, Italic, Link2, List, ListOrdered, ListTodo, Palette, Table2, Video,
-  Menu, MoreHorizontal, Quote, Redo2, Search, Share2, Strikethrough, Undo2, X, Rows3, Columns3, Trash2, AudioLines, FileText, Globe, Bookmark
+  Menu, MoreHorizontal, Quote, Redo2, Search, Share2, Sigma, Strikethrough, Undo2, X, Rows3, Columns3, Trash2, AudioLines, FileText, Globe, Bookmark
 } from 'lucide-vue-next'
 import Sidebar from './components/Sidebar.vue'
 
@@ -85,6 +87,9 @@ const embedError = ref('')
 const bookmarkOpen = ref(false)
 const bookmarkUrl = ref('')
 const bookmarkError = ref('')
+const equationOpen = ref(false)
+const equationText = ref('E = mc^2')
+const equationEditingPos = ref(null)
 const fileError = ref('')
 const pageIcons = ['👋', '📄', '📚', '🎯', '💡', '✅', '🌱', '🚀', '⭐', '📝', '🎨', '🧠']
 const pageCovers = [
@@ -153,6 +158,7 @@ const slashCommands = [
   { id: 'file', label: 'File', keywords: 'file attachment pdf document download', icon: FileText },
   { id: 'embed', label: 'Embed', keywords: 'embed web page website iframe', icon: Globe },
   { id: 'bookmark', label: 'Bookmark', keywords: 'bookmark link card url', icon: Bookmark },
+  { id: 'equation', label: 'Equation', keywords: 'equation math latex katex formula', icon: Sigma },
   { id: 'blockquote', label: 'Quote', keywords: 'quote callout', icon: Quote },
   { id: 'codeBlock', label: 'Code block', keywords: 'code', icon: Code2 }
 ]
@@ -298,6 +304,79 @@ const BookmarkCard = Node.create({
   }
 })
 
+const EquationBlock = Node.create({
+  name: 'equationBlock',
+  group: 'block',
+  atom: true,
+  addAttributes() {
+    return { expression: { default: 'E = mc^2' } }
+  },
+  parseHTML() {
+    return [{ tag: 'div[data-equation-block]' }]
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ['div', { 'data-equation-block': 'true', class: 'equation-block', 'data-expression': HTMLAttributes.expression }]
+  },
+  addNodeView() {
+    return ({ node, getPos }) => {
+      const dom = document.createElement('div')
+      dom.className = 'equation-block'
+      dom.setAttribute('data-equation-block', 'true')
+      dom.contentEditable = 'false'
+
+      const render = document.createElement('div')
+      render.className = 'equation-render'
+      dom.appendChild(render)
+
+      const edit = document.createElement('button')
+      edit.type = 'button'
+      edit.className = 'equation-edit'
+      edit.textContent = 'Edit equation'
+      dom.appendChild(edit)
+
+      const draw = expression => {
+        render.textContent = ''
+        try {
+          katex.render(expression || 'E = mc^2', render, { throwOnError: false, displayMode: true })
+        } catch {
+          render.textContent = expression || 'E = mc^2'
+        }
+      }
+      draw(node.attrs.expression)
+
+      dom.addEventListener('dblclick', event => {
+        event.preventDefault()
+        dom.dispatchEvent(new CustomEvent('equation-edit', {
+          bubbles: true,
+          detail: { expression: node.attrs.expression, pos: getPos?.() ?? null }
+        }))
+      })
+
+      edit.addEventListener('click', event => {
+        event.preventDefault()
+        dom.dispatchEvent(new CustomEvent('equation-edit', {
+          bubbles: true,
+          detail: { expression: node.attrs.expression, pos: getPos?.() ?? null }
+        }))
+      })
+
+      return {
+        dom,
+        update(updatedNode) {
+          if (updatedNode.type.name !== 'equationBlock') return false
+          draw(updatedNode.attrs.expression)
+          return true
+        }
+      }
+    }
+  },
+  addCommands() {
+    return {
+      setEquationBlock: attributes => ({ commands }) => commands.insertContent({ type: this.name, attrs: attributes })
+    }
+  }
+})
+
 const currentPage = computed(() => pages.value.find(page => page.id === activePageId.value) || pages.value[0])
 const pageLink = computed(() => {
   if (!currentPage.value) return ''
@@ -327,6 +406,7 @@ const editor = useEditor({
     FileEmbed,
     WebEmbed,
     BookmarkCard,
+    EquationBlock,
     DragHandle.configure({
       nested: true,
       render: () => {
@@ -383,6 +463,7 @@ watch(currentPage, page => {
 }, { flush: 'post' })
 
 onMounted(() => {
+  window.addEventListener('equation-edit', handleEquationEdit)
   settingsTheme.value = localStorage.getItem('notion-clone-theme') || 'system'
   applyTheme(settingsTheme.value)
   themeMedia = window.matchMedia('(prefers-color-scheme: dark)')
@@ -433,6 +514,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  window.removeEventListener('equation-edit', handleEquationEdit)
   themeMedia?.removeEventListener?.('change', themeMediaHandler)
   if (historyTimer) window.clearTimeout(historyTimer)
   window.removeEventListener('keydown', handleWorkspaceKeydown)
@@ -864,6 +946,13 @@ function applySlashCommand(command) {
     orderedList: () => chain.toggleOrderedList().run(),
     taskList: () => chain.toggleTaskList().run(),
     table: () => chain.insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
+    equation: () => {
+      chain.run()
+      equationEditingPos.value = null
+      equationText.value = 'E = mc^2'
+      equationOpen.value = true
+      nextTick(() => document.querySelector('.equation-input')?.focus())
+    },
     bookmark: () => {
       chain.run()
       bookmarkOpen.value = true
@@ -901,6 +990,35 @@ function applySlashCommand(command) {
   actions[command.id]?.()
   slashMenuOpen.value = false
   slashQuery.value = ''
+}
+
+function openEquationPicker() {
+  equationEditingPos.value = null
+  equationText.value = 'E = mc^2'
+  equationOpen.value = !equationOpen.value
+  if (equationOpen.value) nextTick(() => document.querySelector('.equation-input')?.focus())
+}
+
+function handleEquationEdit(event) {
+  equationEditingPos.value = event.detail?.pos ?? null
+  equationText.value = event.detail?.expression || 'E = mc^2'
+  equationOpen.value = true
+  nextTick(() => document.querySelector('.equation-input')?.focus())
+}
+
+function insertOrUpdateEquation() {
+  const expression = equationText.value.trim()
+  if (!expression) {
+    equationOpen.value = false
+    return
+  }
+  if (equationEditingPos.value !== null) {
+    editor.value?.chain().focus().setNodeSelection(equationEditingPos.value).updateAttributes('equationBlock', { expression }).run()
+  } else {
+    editor.value?.chain().focus().setEquationBlock({ expression }).run()
+  }
+  equationOpen.value = false
+  equationEditingPos.value = null
 }
 
 function openBookmarkPicker() {
@@ -1544,6 +1662,14 @@ function permanentlyDeletePage(pageId) {
                 <input v-model="imageUrl" class="image-url-input" type="url" placeholder="https://example.com/image.jpg" @keydown.enter.prevent="insertImageUrl" />
                 <p v-if="imageError" class="image-error">{{ imageError }}</p>
                 <button type="button" class="image-apply" @click="insertImageUrl">Add image</button>
+              </div>
+            </div>
+            <div class="equation-control">
+              <button type="button" title="Add equation" aria-label="Add equation" @mousedown.prevent @click="openEquationPicker"><Sigma :size="16" /></button>
+              <div v-if="equationOpen" class="equation-popover">
+                <p>Equation</p>
+                <textarea v-model="equationText" class="equation-input" rows="3" placeholder="E = mc^2" @keydown.enter.ctrl.prevent="insertOrUpdateEquation"></textarea>
+                <button type="button" class="equation-apply" @click="insertOrUpdateEquation">{{ equationEditingPos === null ? 'Insert equation' : 'Update equation' }}</button>
               </div>
             </div>
             <div class="bookmark-control">
