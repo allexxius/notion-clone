@@ -1,5 +1,6 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { Node } from '@tiptap/core'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import { BubbleMenu } from '@tiptap/vue-3/menus'
 import StarterKit from '@tiptap/starter-kit'
@@ -17,7 +18,7 @@ import { TableRow } from '@tiptap/extension-table-row'
 import { TableCell } from '@tiptap/extension-table-cell'
 import { TableHeader } from '@tiptap/extension-table-header'
 import {
-  Bold, ChevronLeft, ChevronRight, Code2, Heading1, Heading2, ImagePlus, Italic, Link2, List, ListOrdered, ListTodo, Palette, Table2,
+  Bold, ChevronLeft, ChevronRight, Code2, Heading1, Heading2, ImagePlus, Italic, Link2, List, ListOrdered, ListTodo, Palette, Table2, Video,
   Menu, MoreHorizontal, Quote, Redo2, Search, Share2, Strikethrough, Undo2, X, Rows3, Columns3, Trash2
 } from 'lucide-vue-next'
 import Sidebar from './components/Sidebar.vue'
@@ -71,6 +72,9 @@ const imageOpen = ref(false)
 const imageUrl = ref('')
 const imageError = ref('')
 const imageFileInput = ref(null)
+const videoOpen = ref(false)
+const videoUrl = ref('')
+const videoError = ref('')
 const pageIcons = ['👋', '📄', '📚', '🎯', '💡', '✅', '🌱', '🚀', '⭐', '📝', '🎨', '🧠']
 const pageCovers = [
   { id: 'mist', label: 'Soft mist', className: 'cover-mist' },
@@ -133,9 +137,42 @@ const slashCommands = [
   { id: 'taskList', label: 'To-do list', keywords: 'todo checkbox task', icon: ListTodo },
   { id: 'table', label: 'Table', keywords: 'table grid rows columns', icon: Table2 },
   { id: 'image', label: 'Image', keywords: 'image photo picture upload', icon: ImagePlus },
+  { id: 'video', label: 'Video embed', keywords: 'video youtube mp4 embed', icon: Video },
   { id: 'blockquote', label: 'Quote', keywords: 'quote callout', icon: Quote },
   { id: 'codeBlock', label: 'Code block', keywords: 'code', icon: Code2 }
 ]
+
+const VideoEmbed = Node.create({
+  name: 'videoEmbed',
+  group: 'block',
+  atom: true,
+  addAttributes() {
+    return {
+      src: { default: null },
+      type: { default: 'iframe' }
+    }
+  },
+  parseHTML() {
+    return [{ tag: 'div[data-video-embed]' }]
+  },
+  renderHTML({ HTMLAttributes }) {
+    if (HTMLAttributes.type === 'video') {
+      return ['div', { 'data-video-embed': 'true', class: 'video-embed' }, ['video', { src: HTMLAttributes.src, controls: 'true' }]]
+    }
+    return ['div', { 'data-video-embed': 'true', class: 'video-embed' }, ['iframe', {
+      src: HTMLAttributes.src,
+      title: 'Embedded video',
+      frameborder: '0',
+      allow: 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture',
+      allowfullscreen: 'true'
+    }]]
+  },
+  addCommands() {
+    return {
+      setVideoEmbed: attributes => ({ commands }) => commands.insertContent({ type: this.name, attrs: attributes })
+    }
+  }
+})
 
 const currentPage = computed(() => pages.value.find(page => page.id === activePageId.value) || pages.value[0])
 const pageLink = computed(() => {
@@ -161,6 +198,7 @@ const editor = useEditor({
     TableHeader,
     TableCell,
     Image.configure({ inline: false, allowBase64: true }),
+    VideoEmbed,
     DragHandle.configure({
       nested: true,
       render: () => {
@@ -698,6 +736,11 @@ function applySlashCommand(command) {
     orderedList: () => chain.toggleOrderedList().run(),
     taskList: () => chain.toggleTaskList().run(),
     table: () => chain.insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
+    video: () => {
+      chain.run()
+      videoOpen.value = true
+      nextTick(() => document.querySelector('.video-url-input')?.focus())
+    },
     image: () => {
       chain.run()
       imageOpen.value = true
@@ -710,6 +753,51 @@ function applySlashCommand(command) {
   actions[command.id]?.()
   slashMenuOpen.value = false
   slashQuery.value = ''
+}
+
+function openVideoPicker() {
+  videoUrl.value = ''
+  videoError.value = ''
+  videoOpen.value = !videoOpen.value
+}
+
+function normalizeVideoUrl(rawUrl) {
+  const url = rawUrl.trim()
+  if (!/^https?:\/\//i.test(url)) return null
+
+  try {
+    const parsed = new URL(url)
+    if (/\.mp4($|[?])/i.test(parsed.pathname) || parsed.hostname.includes('vimeo.com') || parsed.hostname.includes('youtube.com') || parsed.hostname.includes('youtu.be')) {
+      if (parsed.hostname.includes('youtu.be')) {
+        const videoId = parsed.pathname.split('/').filter(Boolean)[0]
+        return videoId ? { src: `https://www.youtube.com/embed/${videoId}`, type: 'iframe' } : null
+      }
+      if (parsed.hostname.includes('youtube.com')) {
+        const videoId = parsed.searchParams.get('v') || parsed.pathname.match(/\/embed\/([^/]+)/)?.[1]
+        return videoId ? { src: `https://www.youtube.com/embed/${videoId}`, type: 'iframe' } : null
+      }
+      if (parsed.hostname.includes('vimeo.com')) {
+        const videoId = parsed.pathname.match(/\/(\d+)/)?.[1]
+        return videoId ? { src: `https://player.vimeo.com/video/${videoId}`, type: 'iframe' } : null
+      }
+      return { src: parsed.toString(), type: 'video' }
+    }
+  } catch {
+    return null
+  }
+  return null
+}
+
+function insertVideoUrl() {
+  const normalized = normalizeVideoUrl(videoUrl.value)
+  if (!normalized) {
+    videoError.value = 'Use a YouTube, Vimeo, or direct MP4 URL.'
+    return
+  }
+  editor.value?.chain().focus().setVideoEmbed(normalized).run()
+  videoUrl.value = ''
+  videoError.value = ''
+  videoOpen.value = false
 }
 
 function openImagePicker() {
@@ -1186,6 +1274,15 @@ function permanentlyDeletePage(pageId) {
                 <input v-model="imageUrl" class="image-url-input" type="url" placeholder="https://example.com/image.jpg" @keydown.enter.prevent="insertImageUrl" />
                 <p v-if="imageError" class="image-error">{{ imageError }}</p>
                 <button type="button" class="image-apply" @click="insertImageUrl">Add image</button>
+              </div>
+            </div>
+            <div class="video-control">
+              <button type="button" title="Add video" aria-label="Add video" @mousedown.prevent @click="openVideoPicker"><Video :size="16" /></button>
+              <div v-if="videoOpen" class="video-popover">
+                <p>Add a video</p>
+                <input v-model="videoUrl" class="video-url-input" type="url" placeholder="YouTube, Vimeo, or MP4 URL" @keydown.enter.prevent="insertVideoUrl" />
+                <p v-if="videoError" class="video-error">{{ videoError }}</p>
+                <button type="button" class="video-apply" @click="insertVideoUrl">Embed video</button>
               </div>
             </div>
             <template v-if="editor?.isActive('table')">
