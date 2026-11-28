@@ -19,7 +19,7 @@ import { TableCell } from '@tiptap/extension-table-cell'
 import { TableHeader } from '@tiptap/extension-table-header'
 import {
   Bold, ChevronLeft, ChevronRight, Code2, Heading1, Heading2, ImagePlus, Italic, Link2, List, ListOrdered, ListTodo, Palette, Table2, Video,
-  Menu, MoreHorizontal, Quote, Redo2, Search, Share2, Strikethrough, Undo2, X, Rows3, Columns3, Trash2, AudioLines, FileText
+  Menu, MoreHorizontal, Quote, Redo2, Search, Share2, Strikethrough, Undo2, X, Rows3, Columns3, Trash2, AudioLines, FileText, Globe
 } from 'lucide-vue-next'
 import Sidebar from './components/Sidebar.vue'
 
@@ -79,6 +79,9 @@ const audioOpen = ref(false)
 const audioUrl = ref('')
 const audioError = ref('')
 const fileOpen = ref(false)
+const embedOpen = ref(false)
+const embedUrl = ref('')
+const embedError = ref('')
 const fileError = ref('')
 const pageIcons = ['👋', '📄', '📚', '🎯', '💡', '✅', '🌱', '🚀', '⭐', '📝', '🎨', '🧠']
 const pageCovers = [
@@ -145,6 +148,7 @@ const slashCommands = [
   { id: 'video', label: 'Video embed', keywords: 'video youtube mp4 embed', icon: Video },
   { id: 'audio', label: 'Audio', keywords: 'audio mp3 wav ogg music', icon: AudioLines },
   { id: 'file', label: 'File', keywords: 'file attachment pdf document download', icon: FileText },
+  { id: 'embed', label: 'Embed', keywords: 'embed web page website iframe', icon: Globe },
   { id: 'blockquote', label: 'Quote', keywords: 'quote callout', icon: Quote },
   { id: 'codeBlock', label: 'Code block', keywords: 'code', icon: Code2 }
 ]
@@ -235,6 +239,33 @@ const FileEmbed = Node.create({
   }
 })
 
+const WebEmbed = Node.create({
+  name: 'webEmbed',
+  group: 'block',
+  atom: true,
+  addAttributes() {
+    return { src: { default: null }, title: { default: 'Embedded page' } }
+  },
+  parseHTML() {
+    return [{ tag: 'div[data-web-embed]' }]
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ['div', { 'data-web-embed': 'true', class: 'web-embed' },
+      ['iframe', {
+        src: HTMLAttributes.src,
+        title: HTMLAttributes.title,
+        loading: 'lazy',
+        sandbox: 'allow-scripts allow-same-origin allow-forms allow-popups'
+      }]
+    ]
+  },
+  addCommands() {
+    return {
+      setWebEmbed: attributes => ({ commands }) => commands.insertContent({ type: this.name, attrs: attributes })
+    }
+  }
+})
+
 const currentPage = computed(() => pages.value.find(page => page.id === activePageId.value) || pages.value[0])
 const pageLink = computed(() => {
   if (!currentPage.value) return ''
@@ -262,6 +293,7 @@ const editor = useEditor({
     VideoEmbed,
     AudioEmbed,
     FileEmbed,
+    WebEmbed,
     DragHandle.configure({
       nested: true,
       render: () => {
@@ -799,6 +831,11 @@ function applySlashCommand(command) {
     orderedList: () => chain.toggleOrderedList().run(),
     taskList: () => chain.toggleTaskList().run(),
     table: () => chain.insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
+    embed: () => {
+      chain.run()
+      embedOpen.value = true
+      nextTick(() => document.querySelector('.embed-url-input')?.focus())
+    },
     file: () => {
       chain.run()
       fileOpen.value = true
@@ -826,6 +863,48 @@ function applySlashCommand(command) {
   actions[command.id]?.()
   slashMenuOpen.value = false
   slashQuery.value = ''
+}
+
+function openEmbedPicker() {
+  embedUrl.value = ''
+  embedError.value = ''
+  embedOpen.value = !embedOpen.value
+}
+
+function normalizeEmbedUrl(rawUrl) {
+  try {
+    const url = rawUrl.trim()
+    if (!/^https:\/\//i.test(url)) return null
+    const parsed = new URL(url)
+
+    if (parsed.hostname.includes('youtu.be')) {
+      const videoId = parsed.pathname.split('/').filter(Boolean)[0]
+      return videoId ? `https://www.youtube.com/embed/${videoId}` : null
+    }
+    if (parsed.hostname.includes('youtube.com')) {
+      const videoId = parsed.searchParams.get('v') || parsed.pathname.match(/\/embed\/([^/]+)/)?.[1]
+      return videoId ? `https://www.youtube.com/embed/${videoId}` : null
+    }
+    if (parsed.hostname.includes('vimeo.com')) {
+      const videoId = parsed.pathname.match(/\/(\d+)/)?.[1]
+      return videoId ? `https://player.vimeo.com/video/${videoId}` : null
+    }
+    return parsed.toString()
+  } catch {
+    return null
+  }
+}
+
+function insertWebEmbed() {
+  const src = normalizeEmbedUrl(embedUrl.value)
+  if (!src) {
+    embedError.value = 'Enter a valid HTTPS URL.'
+    return
+  }
+  editor.value?.chain().focus().setWebEmbed({ src, title: 'Embedded page' }).run()
+  embedUrl.value = ''
+  embedError.value = ''
+  embedOpen.value = false
 }
 
 function openFilePicker() {
@@ -1402,6 +1481,15 @@ function permanentlyDeletePage(pageId) {
                 <input v-model="imageUrl" class="image-url-input" type="url" placeholder="https://example.com/image.jpg" @keydown.enter.prevent="insertImageUrl" />
                 <p v-if="imageError" class="image-error">{{ imageError }}</p>
                 <button type="button" class="image-apply" @click="insertImageUrl">Add image</button>
+              </div>
+            </div>
+            <div class="embed-control">
+              <button type="button" title="Embed page" aria-label="Embed page" @mousedown.prevent @click="openEmbedPicker"><Globe :size="16" /></button>
+              <div v-if="embedOpen" class="embed-popover">
+                <p>Embed a webpage</p>
+                <input v-model="embedUrl" class="embed-url-input" type="url" placeholder="https://example.com" @keydown.enter.prevent="insertWebEmbed" />
+                <p v-if="embedError" class="embed-error">{{ embedError }}</p>
+                <button type="button" class="embed-apply" @click="insertWebEmbed">Embed page</button>
               </div>
             </div>
             <div class="file-control">
